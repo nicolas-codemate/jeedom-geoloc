@@ -1,0 +1,25 @@
+{
+  "id": "geoloc",
+  "name": "Geolocalisation Plugin",
+  "pluginVersion": "0.1",
+  "description": {
+    "fr_FR": "Plugin géolocaliser des équipements sur une carte"
+  },
+  "licence": "AGPL",
+  "author": "Codemate SARL",
+  "require": "4.3",
+  "category": "devicecommunication",
+  "hasDependency": true,
+  "hasOwnDeamon": false,
+  "maxDependancyInstallTime": 0,
+  "changelog_beta": "",
+  "changelog": "https://github.com/nicolas-codemate/jeedom-geoloc/blob/main/docs/fr_FR/changelog.md",
+  "documentation": "https://github.com/nicolas-codemate/jeedom-geoloc/blob/main/README.md",
+  "language": [
+    "fr_FR"
+  ],
+  "compatibility": "",
+  "whiteListFolders": [
+    "/download"
+  ]
+}
