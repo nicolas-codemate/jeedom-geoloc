@@ -57,7 +57,7 @@ sendVarToJS('eqType', $plugin->getId());
 </div>
 <div class="row row-overflow">
     <div class="col-xs-12">
-        <div id="map" style="height: 600px;"></div>
+        <div id="map" style="height: 800px;"></div>
     </div><!-- /.row row-overflow -->
 
     <!-- Inclusion du fichier javascript du plugin (dossier, nom_du_fichier, extension_du_fichier, id_du_plugin) -->
@@ -67,5 +67,5 @@ sendVarToJS('eqType', $plugin->getId());
     include_file('desktop', 'geoloc', 'js', 'geoloc');
 
     // Inclusion du fichier javascript du core - NE PAS MODIFIER NI SUPPRIMER -->
-    include_file('core', 'plugin.template', 'js'); ?>
+    include_file('core', 'plugin.template', 'js');
     ?>
