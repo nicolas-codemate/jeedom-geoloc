@@ -8,8 +8,11 @@ if (!isConnect('admin')) {
 // Déclaration des variables obligatoires
 $plugin = plugin::byId('geoloc');
 
-// Include style sheet file
-
+$defaultCordinate = config::byKey(
+    'configuration',
+    'geoloc',
+    ['defaultLatitude' => 48.8575, 'defaultLongitude' => 2.3514, 'defaultZoom' => 12] // Paris will be used by default
+);
 
 /** @var jMQTT $eqLogics */
 $eqLogics = jMQTT::all(true);
@@ -23,13 +26,15 @@ foreach ($eqLogics as $eqLogic) {
     }
 }
 
+sendVarToJS('defaultCordinate', $defaultCordinate);
 sendVarToJS('geolocalisableItems', $geolocalisableItems);
+sendVarToJS('eqType', $plugin->getId());
 
 ?>
 
 <div class="row row-overflow">
     <!-- Page d'accueil du plugin -->
-    <div class="col-xs-12">
+    <div class="col-xs-8">
         <legend><i class="fas fa-map"></i>&nbsp;{{Liste des équipements géolocalisables}}
             <legend>
 
@@ -44,6 +49,13 @@ sendVarToJS('geolocalisableItems', $geolocalisableItems);
                 }
                 ?>
     </div>
+    <div class="col-xs-4">
+        <div class="cursor eqLogicAction" data-action="gotoPluginConf">
+            <i class="fas fa-wrench"></i>&nbsp;<span>{{Configuration}}</span>
+        </div>
+    </div>
+</div>
+<div class="row row-overflow">
     <div class="col-xs-12">
         <div id="map" style="height: 600px;"></div>
     </div><!-- /.row row-overflow -->
@@ -53,8 +65,7 @@ sendVarToJS('geolocalisableItems', $geolocalisableItems);
     include_file('desktop', 'leaflet', 'css', 'geoloc');
     include_file('desktop', 'leaflet', 'js', 'geoloc');
     include_file('desktop', 'geoloc', 'js', 'geoloc');
-    ?>
 
-    <!-- Inclusion du fichier javascript du core - NE PAS MODIFIER NI SUPPRIMER -->
-    <?php
+    // Inclusion du fichier javascript du core - NE PAS MODIFIER NI SUPPRIMER -->
     include_file('core', 'plugin.template', 'js'); ?>
+    ?>

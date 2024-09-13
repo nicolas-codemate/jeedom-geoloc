@@ -24,7 +24,6 @@ try {
     }
 
     require_once __DIR__.'/../../core/class/geoloc.class.php';
-    ajax::init(['fileUploadForImport']);
 
     $action = init('action');
 
