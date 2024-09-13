@@ -20,6 +20,9 @@ $eqLogics = jMQTT::all(true);
 $geolocalisableItems = [];
 
 foreach ($eqLogics as $eqLogic) {
+    if (false === $eqLogic instanceof jMQTT) {
+        continue;
+    }
     $coordinate = new Coordinate($eqLogic);
     if ($coordinate->isValid()) {
         $geolocalisableItems[] = $coordinate;
