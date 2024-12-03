@@ -1,54 +1,31 @@
 <?php
 
-class Coordinate implements JsonSerializable
+declare(strict_types=1);
+
+final class Coordinate
 {
     private $latitude;
     private $longitude;
-    private $eqLogic;
 
-    public function __construct(jMQTT $JMQTT)
+    public function __construct(float $latitude, float $longitude)
     {
-        /** @var cmd[] $cmds */
-        $cmds = $JMQTT->getCmd();
-        foreach ($cmds as $cmd) {
-            if ('latitude' === $cmd->getName()) {
-                $this->latitude = $cmd->execCmd();
-            }
-            if ('longitude' === $cmd->getName()) {
-                $this->longitude = $cmd->execCmd();
-            }
-        }
-
-        if ($this->isValid()) {
-            $this->eqLogic = $JMQTT;
-        }
+        $this->latitude = $latitude;
+        $this->longitude = $longitude;
     }
 
-    public function getLatitude(): string
+    public function getLatitude(): float
     {
         return $this->latitude;
     }
 
-    public function getLongitude(): string
+    public function getLongitude(): float
     {
         return $this->longitude;
-    }
-
-    public function getEqLogic(): jMQTT
-    {
-        return $this->eqLogic;
-    }
-
-    public function isValid(): bool
-    {
-        return is_numeric($this->latitude) && is_numeric($this->longitude);
     }
 
     public function jsonSerialize(): array
     {
         return [
-            'id' => $this->eqLogic->getId(),
-            'name' => $this->eqLogic->getName(),
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
         ];

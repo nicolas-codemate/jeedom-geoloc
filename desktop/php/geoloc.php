@@ -14,52 +14,39 @@ $defaultCordinate = config::byKey(
     ['defaultLatitude' => 48.8575, 'defaultLongitude' => 2.3514, 'defaultZoom' => 12] // Paris will be used by default
 );
 
-/** @var jMQTT $eqLogics */
-$eqLogics = jMQTT::all(true);
-
-$geolocalisableItems = [];
-
-foreach ($eqLogics as $eqLogic) {
-    if (false === $eqLogic instanceof jMQTT) {
-        continue;
-    }
-    $coordinate = new Coordinate($eqLogic);
-    if ($coordinate->isValid()) {
-        $geolocalisableItems[] = $coordinate;
-    }
+$objects = [];
+foreach (jeeObject::buildTree() as $object) {
+    $objects[$object->getId()] = [
+        'name' => $object->getName(),
+        'parentNumber' => $object->getConfiguration('parentNumber'),
+    ];
 }
 
 sendVarToJS('defaultCordinate', $defaultCordinate);
-sendVarToJS('geolocalisableItems', $geolocalisableItems);
 sendVarToJS('eqType', $plugin->getId());
 
 ?>
 
 <div class="row row-overflow">
-    <!-- Page d'accueil du plugin -->
-    <div class="col-xs-8">
-        <legend><i class="fas fa-map"></i>&nbsp;{{Liste des équipements géolocalisables}}
-            <legend>
+    <div class="col-lg-4">
+        <legend><i class="fas fa-map"></i>&nbsp;{{Liste des équipements géolocalisables}}</legend>
 
+        <div class="input-group" style="margin:5px;">
+            <label for="parentObjectSelector">{{Objet parent}}</label>
+            <select id="parentObjectSelector" class="form-control" style="width: 100%;">
                 <?php
-                foreach ($geolocalisableItems as $geolocalisableItem) {
-                    $eqLogic = $geolocalisableItem->getEqLogic();
-                    $latitude = $geolocalisableItem->getLatitude();
-                    $longitude = $geolocalisableItem->getLongitude();
-
-                    echo '<div class="eqLogicThumbnailContainer">'.$eqLogic->getName(
-                        ).'Latitude : '.$latitude.' Longitude : '.$longitude.'</div>';
+                foreach ($objects as $objectId => $object) {
+                    echo '<option value="'.$objectId.'">'.str_repeat('&nbsp;', $object['parentNumber']).$object['name'].'</option>';
                 }
                 ?>
-    </div>
-    <div class="col-xs-4">
-        <div class="cursor eqLogicAction" data-action="gotoPluginConf">
-            <i class="fas fa-wrench"></i>&nbsp;<span>{{Configuration}}</span>
+            </select>
+        </div>
+
+        <div class="eqLogicThumbnailContainer" id="eqLogicThumbnailContainer">
         </div>
     </div>
-</div>
-<div class="row row-overflow">
-    <div class="col-xs-12">
+
+    <div class="col-lg-8">
         <div id="map" style="height: 800px;"></div>
     </div><!-- /.row row-overflow -->
 
