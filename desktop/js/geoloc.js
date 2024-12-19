@@ -1,55 +1,67 @@
-class DisplayableObjects {
-    constructor(map) {
-        this.objects = {};
-        this.map = map;
-        this.icons = {};
-    }
-
-    addObject(object) {
-        this.objects[object.id] = object;
-        if (object.display) {
-            this.buildMarker(object);
-        }
-    }
-
-    hideObject(object) {
-        this.objects[object.id].display = false;
-        this.removeMarker(object);
-    }
-
-    buildMarker(object, color = 'red') {
-        const marker = L.marker([object.latitude, object.longitude], {
-            icon: L.icon({
-                iconUrl: `/plugins/geoloc/desktop/css/images/marker-icon-2x-${color}.png`,
-                shadowUrl: '/plugins/geoloc/desktop/css/images/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
-            })
-        }).addTo(this.map);
-        marker.bindPopup(`<h1>${object.name}</h1>`);
-        this.objects[object.id].marker = marker;
-    }
-
-    removeMarker(object) {
-        this.map.removeLayer(this.objects[object.id].marker);
-    }
-
-    reset() {
-        for (const key in this.objects) {
-            if (this.objects.hasOwnProperty(key)) {
-                const element = this.objects[key];
-                if (element instanceof Object) {
-                    this.removeMarker(element);
-                    delete this.objects[key];
-                }
-            }
-        }
-    }
-}
 
 $(function () {
+
+    class DisplayableObjects {
+        constructor(map) {
+            this.objects = {};
+            this.map = map;
+        }
+
+        getVisibleObjects() {
+            return Object.values(this.objects).filter(object => object.display);
+        }
+
+        addObject(object) {
+            this.objects[object.id] = object;
+            if (object.display) {
+                this.buildMarker(object);
+            }
+        }
+
+        hideObject(object) {
+            this.objects[object.id].display = false;
+            this.removeMarker(object);
+        }
+
+        buildMarker(object, color = 'red') {
+            const marker = L.marker([object.latitude, object.longitude], {
+                icon: L.icon({
+                    iconUrl: `/plugins/geoloc/desktop/css/images/marker-icon-2x-${color}.png`,
+                    shadowUrl: '/plugins/geoloc/desktop/css/images/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })
+            }).addTo(this.map);
+            marker.bindPopup(`<h1>${object.name}</h1>`);
+            this.objects[object.id].marker = marker;
+        }
+
+        // build a method to center the map where I can see all the markers
+        centerMap() {
+            const group = new L.featureGroup(Object.values(this.getVisibleObjects()).map(object => object.marker));
+            this.map.flyToBounds(group.getBounds().pad(0.1), {animate: true, duration: 1});
+        }
+
+        removeMarker(object) {
+            this.map.removeLayer(this.objects[object.id].marker);
+        }
+
+        reset() {
+            for (const key in this.objects) {
+                if (this.objects.hasOwnProperty(key)) {
+                    const element = this.objects[key];
+                    if (element instanceof Object) {
+                        this.removeMarker(element);
+                        delete this.objects[key];
+                    }
+                }
+            }
+            // reset map to default position
+            this.map.setView([defaultCordinate.defaultLatitude, defaultCordinate.defaultLongitude], defaultCordinate.defaultZoom);
+        }
+    }
 
     let displayableObjects;
 
@@ -69,7 +81,6 @@ $(function () {
 
 
     const buildObject = function (jeeObject) {
-        displayableObjects.reset(); // we changed the object parent, we can reset the displayable objects
         jeeObject.display = true; // by default, we display the object
         displayableObjects.addObject(jeeObject);
         return `
@@ -114,6 +125,8 @@ $(function () {
 
         bindToggleVisibility();
 
+        displayableObjects.centerMap();
+
         if (0 === items.length) {
             displayableObjects.reset();
             container.append('<div style="margin-top:20px;margin-left:20px"><span class="label label-warning"">Aucun équipement géolocalisable trouvé</span></div>');
@@ -127,9 +140,11 @@ $(function () {
             if ($(this).is(':checked')) {
                 object.display = true;
                 displayableObjects.buildMarker(object);
+                displayableObjects.centerMap();
             } else {
                 object.display = false;
-                displayableObjects.removeMarker(object);
+                displayableObjects.hideObject(object);
+                displayableObjects.centerMap();
             }
         });
     }
