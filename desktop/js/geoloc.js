@@ -1,8 +1,62 @@
+class DisplayableObjects {
+    constructor(map) {
+        this.objects = {};
+        this.map = map;
+        this.icons = {};
+    }
+
+    addObject(object) {
+        this.objects[object.id] = object;
+        if (object.display) {
+            this.buildMarker(object);
+        }
+    }
+
+    hideObject(object) {
+        this.objects[object.id].display = false;
+        this.removeMarker(object);
+    }
+
+    buildMarker(object, color = 'red') {
+        const marker = L.marker([object.latitude, object.longitude], {
+            icon: L.icon({
+                iconUrl: `/plugins/geoloc/desktop/css/images/marker-icon-2x-${color}.png`,
+                shadowUrl: '/plugins/geoloc/desktop/css/images/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            })
+        }).addTo(this.map);
+        marker.bindPopup(`<h1>${object.name}</h1>`);
+        this.objects[object.id].marker = marker;
+    }
+
+    removeMarker(object) {
+        this.map.removeLayer(this.objects[object.id].marker);
+    }
+
+    reset() {
+        for (const key in this.objects) {
+            if (this.objects.hasOwnProperty(key)) {
+                const element = this.objects[key];
+                if (element instanceof Object) {
+                    this.removeMarker(element);
+                    delete this.objects[key];
+                }
+            }
+        }
+    }
+}
+
 $(function () {
-    const buildMap = function() {
+
+    let displayableObjects;
+
+    const buildMap = function () {
         const {defaultLatitude, defaultLongitude, defaultZoom} = defaultCordinate;
 
-        let map = L.map('map').setView([defaultLatitude, defaultLongitude], defaultZoom);
+        const map = L.map('map').setView([defaultLatitude, defaultLongitude], defaultZoom);
 
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             minZoom: 1,
@@ -10,21 +64,20 @@ $(function () {
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
-        // iterate over all checked items and add them to the map
-
-        // geolocalisableItems.forEach(function (item) {
-        //     const marker = L.marker([item.latitude, item.longitude]).addTo(map);
-        //     marker.bindPopup(`<h2>${item.name}</h2>`);
-        // });
+        displayableObjects = new DisplayableObjects(map);
     }
 
+
     const buildObject = function (jeeObject) {
+        displayableObjects.reset(); // we changed the object parent, we can reset the displayable objects
+        jeeObject.display = true; // by default, we display the object
+        displayableObjects.addObject(jeeObject);
         return `
 <div class="eqLogicDisplayCard cursor displayAsTable" data-object="${jeeObject.id}">
     <img alt="objectIcon" class="lazy" src="plugins/jMQTT/core/img/node_${jeeObject.icon}.svg">
     <span class="name">${jeeObject.humanName}</span>
     <span class="hiddenAsCard input-group displayTableRight" style="font-size:12px">
-        <input type="checkbox" name="objectVisible" class="eqLogicVisible" checked>
+        <input type="checkbox" name="objectVisible" class="eqLogicVisible" checked data-object-id="${jeeObject.id}">
     </span>
 </div>
 `;
@@ -56,8 +109,30 @@ $(function () {
         }
 
         const items = buildItems(data.result);
-        container.append(items);
+
+        container.append(items.join(''));
+
+        bindToggleVisibility();
+
+        if (0 === items.length) {
+            displayableObjects.reset();
+            container.append('<div style="margin-top:20px;margin-left:20px"><span class="label label-warning"">Aucun équipement géolocalisable trouvé</span></div>');
+        }
     };
+
+    const bindToggleVisibility = function () {
+        $('.eqLogicVisible').on('change', function () {
+            const objectId = $(this).data('object-id');
+            const object = displayableObjects.objects[objectId];
+            if ($(this).is(':checked')) {
+                object.display = true;
+                displayableObjects.buildMarker(object);
+            } else {
+                object.display = false;
+                displayableObjects.removeMarker(object);
+            }
+        });
+    }
 
     // send ajax call to get equipments from broker and parent object
     const searchEquipments = async function (parentObjectId) {
@@ -88,6 +163,7 @@ $(function () {
     };
 
     const initPage = async function () {
+        buildMap();
         const objectParent = $('select#parentObjectSelector');
 
         // build on first load
@@ -103,9 +179,8 @@ $(function () {
                 buildEqLogicContainer(data);
             }
         });
-        buildMap();
-    }
 
+    }
 
     initPage();
 });
