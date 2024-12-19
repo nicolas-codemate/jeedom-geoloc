@@ -1,4 +1,3 @@
-
 $(function () {
 
     class DisplayableObjects {
@@ -40,12 +39,28 @@ $(function () {
 
         // build a method to center the map where I can see all the markers
         centerMap() {
+            if (0 === this.getVisibleObjects().length) {
+                this.resetMapDefaultPosition();
+                return;
+            }
             const group = new L.featureGroup(Object.values(this.getVisibleObjects()).map(object => object.marker));
             this.map.flyToBounds(group.getBounds().pad(0.1), {animate: true, duration: 1});
         }
 
         removeMarker(object) {
             this.map.removeLayer(this.objects[object.id].marker);
+        }
+
+        resetMapDefaultPosition() {
+            this.map.setView(
+                [defaultCordinate.defaultLatitude, defaultCordinate.defaultLongitude],
+                defaultCordinate.defaultZoom,
+                {
+                    animate: true, pan: {
+                        "duration": 10
+                    }
+                }
+            );
         }
 
         reset() {
@@ -58,8 +73,7 @@ $(function () {
                     }
                 }
             }
-            // reset map to default position
-            this.map.setView([defaultCordinate.defaultLatitude, defaultCordinate.defaultLongitude], defaultCordinate.defaultZoom);
+            this.resetMapDefaultPosition();
         }
     }
 
@@ -96,6 +110,7 @@ $(function () {
 
     // build plugin index page with equipements list and current state
     const buildEqLogicContainer = function (data) {
+        displayableObjects.reset();
         const container = $('#eqLogicThumbnailContainer');
         container.find('div').remove();
 
