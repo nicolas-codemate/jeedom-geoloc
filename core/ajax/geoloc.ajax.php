@@ -17,9 +17,9 @@
 
 include(__DIR__.'/../class/GeolocalisableEquipment.php');
 
-function buildTree(jeeObject $parentObject, array $jMQTTs): array
+function buildTree(jeeObject $parentObject, array $eqLogics): array
 {
-    $items = buildGeolocalisableItems($parentObject, $jMQTTs);
+    $items = buildGeolocalisableItems($parentObject, $eqLogics);
 
     $toReturn = [
         'id' => $parentObject->getId(),
@@ -30,7 +30,7 @@ function buildTree(jeeObject $parentObject, array $jMQTTs): array
 
     $countItems = count($items);
     foreach ($parentObject->getChild() as $child) {
-        $child = buildTree($child, $jMQTTs);
+        $child = buildTree($child, $eqLogics);
         $toReturn['child'][] = $child;
         $countItems += $child['countItems'];
     }
@@ -41,22 +41,18 @@ function buildTree(jeeObject $parentObject, array $jMQTTs): array
 }
 
 /**
- * @param jMQTT[] $jMQTTs
+ * @param eqLogic[] $eqLogics
  */
-function buildGeolocalisableItems(jeeObject $parentObject, array $jMQTTs): array
+function buildGeolocalisableItems(jeeObject $parentObject, array $eqLogics): array
 {
     $geolocalisableItems = [];
 
-    foreach ($jMQTTs as $jMQTT) {
-        if (false === $jMQTT instanceof jMQTT) {
+    foreach ($eqLogics as $eqLogic) {
+        if ($eqLogic->getObject_id() !== $parentObject->getId()) {
             continue;
         }
 
-        if ($jMQTT->getObject_id() !== $parentObject->getId()) {
-            continue;
-        }
-
-        $geolocalisableItem = new GeolocalisableEquipment($jMQTT);
+        $geolocalisableItem = new GeolocalisableEquipment($eqLogic);
         if ($geolocalisableItem->hasCoordinate()) {
             $geolocalisableItems[] = $geolocalisableItem;
         }
@@ -83,7 +79,7 @@ try {
         {
             $parentObjectId = init('parentObjectId');
 
-            $jMQTTs = jMQTT::all(true);
+            $eqLogics = eqLogic::all(true);
 
             if (empty($parentObjectId)) {
                 /** @var jeeObject $parentObject */
@@ -96,11 +92,48 @@ try {
                 }
             }
 
-            $objects = buildTree($parentObject, $jMQTTs);
+            $objects = buildTree($parentObject, $eqLogics);
 
             ajax::success($objects);
 
             return;
+        }
+        case "addGeolocation":
+        {
+            $eqLogicId = init('eqLogicId');
+            $latitude = init('latitude');
+            $longitude = init('longitude');
+
+            /** @var eqLogic|null $eqLogic */
+            $eqLogic = eqLogic::byId($eqLogicId);
+            if (null === $eqLogicId) {
+                ajax::error(__('Équipement introuvable', __FILE__));
+            }
+
+            DB::beginTransaction();
+
+            // first check if the command already exists
+            // otherwise create it
+
+            /** @var cmd|null $cmdLatitude */
+            $cmdLatitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LATITUDE_CMD_NAME);
+            if (!$cmdLatitude) {
+                $cmdLatitude = geolocCmd::build($eqLogic, geolocCmd::LATITUDE_CMD_NAME);
+            }
+
+            /** @var cmd|null $cmdLongitude */
+            $cmdLongitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
+
+            if (!$cmdLongitude) {
+                $cmdLongitude = geolocCmd::build($eqLogic, geolocCmd::LONGITUDE_CMD_NAME);
+            }
+
+            $cmdLatitude->event($latitude);
+            $cmdLongitude->event($longitude);
+
+            DB::commit();
+
+            ajax::success();
         }
         default:
             throw new RuntimeException(__('Aucune méthode correspondante à', __FILE__).' : '.$action);

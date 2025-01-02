@@ -13,33 +13,26 @@ final class GeolocalisableEquipment implements JsonSerializable
     private $fullHumanName;
     private $icon;
 
-    public function __construct(jMQTT $JMQTT)
+    public function __construct(eqLogic $eqLogic)
     {
-        /** @var cmd[] $cmds */
-        $cmds = $JMQTT->getCmd();
-        $latitude = null;
-        $longitude = null;
-        foreach ($cmds as $cmd) {
-            if ('latitude' === $cmd->getName()) {
-//                $cmd->addHistoryValue();
-                $latitude = $cmd->execCmd();
-            }
-            if ('longitude' === $cmd->getName()) {
-                $longitude = $cmd->execCmd();
-            }
-        }
+        /** @var cmd|null $cmdLatitude */
+        $cmdLatitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LATITUDE_CMD_NAME);
+        /** @var cmd|null $cmdLongitude */
+        $cmdLongitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
+
+        $latitude = $cmdLatitude ? $cmdLatitude->execCmd() : null;
+        $longitude = $cmdLongitude ? $cmdLongitude->execCmd() : null;
 
         if (is_numeric($latitude) && is_numeric($longitude)) {
-            $this->eqLogic = $JMQTT;
+            $this->eqLogic = $eqLogic;
             $this->coordinate = new Coordinate((float)$latitude, (float)$longitude);
         }
 
-        $this->id = $JMQTT->getId();
-        $this->name = $JMQTT->getName();
-        $this->humanName = $JMQTT->getHumanName(true, true);
-        $this->fullHumanName = $this->buildFullHumanName($JMQTT);
-        $this->icon = $JMQTT->getConfiguration('icone');
-
+        $this->id = $eqLogic->getId();
+        $this->name = $eqLogic->getName();
+        $this->humanName = $eqLogic->getHumanName(true, true);
+        $this->fullHumanName = $this->buildFullHumanName($eqLogic);
+        $this->icon = $eqLogic->getConfiguration('icone');
     }
 
     public function getCoordinate(): Coordinate
@@ -53,7 +46,7 @@ final class GeolocalisableEquipment implements JsonSerializable
     }
 
 
-    public function getEqLogic(): jMQTT
+    public function getEqLogic(): eqLogic
     {
         return $this->eqLogic;
     }
@@ -102,9 +95,9 @@ final class GeolocalisableEquipment implements JsonSerializable
         ];
     }
 
-    private function buildFullHumanName(jMQTT $jMQTT): string
+    private function buildFullHumanName(eqLogic $eqLogic): string
     {
-        $jMQTTObject = $jMQTT->getObject();
+        $jMQTTObject = $eqLogic->getObject();
         $fullHumanName = [$jMQTTObject->getName()];
         while ($father = $jMQTTObject->getFather()) {
             $fullHumanName[] = $father->getName();
@@ -112,7 +105,7 @@ final class GeolocalisableEquipment implements JsonSerializable
         }
 
         $fullHumanName = array_reverse($fullHumanName);
-        $fullHumanName[] = $jMQTT->getName();
+        $fullHumanName[] = $eqLogic->getName();
 
         return implode(' - ', $fullHumanName);
     }

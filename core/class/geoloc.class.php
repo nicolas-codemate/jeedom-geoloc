@@ -17,10 +17,13 @@
 
 /* * ***************************Includes********************************* */
 require_once __DIR__.'/../../../../core/php/core.inc.php';
+require_once __DIR__.'/geolocCmd.class.php';
 
 class geoloc extends eqLogic
 {
+    public const TYPE = 'geoloc';
     private const DEFAULT_CSV_SEPARATOR = ';';
+
 
     /*     * *************************Attributs****************************** */
 
@@ -174,30 +177,3 @@ class geoloc extends eqLogic
     /*     * **********************Getteur Setteur*************************** */
 }
 
-class geolocCmd extends cmd
-{
-    /*     * *************************Attributs****************************** */
-
-    /*
-    public static $_widgetPossibility = array();
-    */
-
-    /*     * ***********************Methode static*************************** */
-
-
-    /*     * *********************Methode d'instance************************* */
-
-    /*
-    * Permet d'empêcher la suppression des commandes même si elles ne sont pas dans la nouvelle configuration de l'équipement envoyé en JS
-    public function dontRemoveCmd() {
-      return true;
-    }
-    */
-
-    // Exécution d'une commande
-    public function execute($_options = array())
-    {
-    }
-
-    /*     * **********************Getteur Setteur*************************** */
-}
