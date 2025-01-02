@@ -28,6 +28,28 @@ sendVarToJS('eqType', $plugin->getId());
 ?>
 
 <div class="row row-overflow">
+    <div class="col-xs-12 eqLogicThumbnailDisplay">
+        <div class="row">
+            <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
+            <div class="eqLogicThumbnailContainer">
+                <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocation">
+                    <i class="fas fa-location-arrow"></i>
+                    <br>
+                    <span>{{Géolocaliser un équipement}}</span>
+                </div>
+                <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocalisableEquipment">
+                    <i class="fas fa-plus-circle"></i>
+                    <br>
+                    <span>{{Ajouter un équipement géolocalisable}}</span>
+                </div>
+                <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
+                    <i class="fas fa-wrench"></i>
+                    <br>
+                    <span>{{Configuration}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="col-lg-4">
         <legend><i class="fas fa-map"></i>&nbsp;{{Liste des équipements géolocalisables}}</legend>
 

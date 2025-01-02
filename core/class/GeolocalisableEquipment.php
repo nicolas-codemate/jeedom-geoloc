@@ -15,6 +15,10 @@ final class GeolocalisableEquipment implements JsonSerializable
 
     public function __construct(eqLogic $eqLogic)
     {
+        if (class_exists(jMQTT::class) && $eqLogic instanceof jMQTT && $eqLogic->getType() === jMQTTConst::TYP_BRK) {
+            return;
+        }
+
         /** @var cmd|null $cmdLatitude */
         $cmdLatitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LATITUDE_CMD_NAME);
         /** @var cmd|null $cmdLongitude */
@@ -90,18 +94,21 @@ final class GeolocalisableEquipment implements JsonSerializable
             'humanName' => $this->humanName,
             'fullHumanName' => $this->fullHumanName,
             'icon' => $this->icon,
-            'latitude' => $this->coordinate->getLatitude(),
-            'longitude' => $this->coordinate->getLongitude(),
+            'latitude' => $this->coordinate ? $this->coordinate->getLatitude() : null,
+            'longitude' => $this->coordinate ? $this->coordinate->getLongitude() : null,
         ];
     }
 
     private function buildFullHumanName(eqLogic $eqLogic): string
     {
-        $jMQTTObject = $eqLogic->getObject();
-        $fullHumanName = [$jMQTTObject->getName()];
-        while ($father = $jMQTTObject->getFather()) {
+        $object = $eqLogic->getObject();
+        if (null === $object) {
+            return $eqLogic->getName();
+        }
+        $fullHumanName = [$object->getName()];
+        while ($father = $object->getFather()) {
             $fullHumanName[] = $father->getName();
-            $jMQTTObject = $father;
+            $object = $father;
         }
 
         $fullHumanName = array_reverse($fullHumanName);

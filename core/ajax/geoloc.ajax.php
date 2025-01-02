@@ -98,6 +98,26 @@ try {
 
             return;
         }
+        case "getEquipment":
+        {
+            $eqName = init('name');
+
+            /** @var eqLogic[] $eqLogics */
+            $eqLogics = eqLogic::searchByString($eqName);
+            if (!$eqLogics) {
+                ajax::success([]);
+            }
+
+            $foundEquipments = [];
+
+            foreach ($eqLogics as $eqLogic) {
+                $foundEquipments[] = new GeolocalisableEquipment($eqLogic);
+            }
+
+            ajax::success($foundEquipments);
+
+            return;
+        }
         case "addGeolocation":
         {
             $eqLogicId = init('eqLogicId');
