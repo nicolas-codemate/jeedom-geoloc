@@ -31,6 +31,29 @@ $(function () {
         }
 
         buildMarker(object, color = 'red') {
+
+            let className = 'light';
+            const currentTheme = $('body').attr('data-theme')
+            if (currentTheme.endsWith('Dark')) {
+                className = 'dark';
+            }
+
+            let customPopup = `
+<h3>
+    <img class="lazy" src="plugins/jMQTT/core/img/node_${object.icon}.svg" style="min-height: 24px; height:24px; width:auto;padding-top:1px;">
+    ${object.name}
+</h3>
+<span class="label labelObjectHuman">
+    ${object.parents}
+</span>
+<br>
+<br>
+<div>
+    <a class="btn btn-primary btn-xs map-action" data-action="getHistory" data-eqlogic-id="${object.id}"><i class="fa fa-history"></i> Historique</a>
+    <a class="btn btn-warning btn-xs map-action" data-action="updatePosition" data-eqLogic-id="${object.id}"><i class="fa fa-pen"></i> Modifier position</a>
+</div>
+`;
+
             const marker = L.marker([object.latitude, object.longitude], {
                 icon: L.icon({
                     iconUrl: `/plugins/geoloc/desktop/css/images/marker-icon-2x-${color}.png`,
@@ -41,7 +64,15 @@ $(function () {
                     shadowSize: [41, 41]
                 })
             }).addTo(this.map);
-            marker.bindPopup(`<h1>${object.name}</h1>`);
+            marker
+                .bindPopup(customPopup, {className})
+                .on('popupopen', function () {
+                        $('.map-action').off('click').on('click', function () {
+                            mapActionCallback($(this).data('action'), $(this).data('eqlogicId'));
+                        });
+                    }
+                )
+            ;
             this.objects[object.id].marker = marker;
         }
 
@@ -87,9 +118,16 @@ $(function () {
 
     let displayableObjects;
 
+    const mapActionCallback = async function (action, eqLogicId) {
+        switch (action) {
+            case "updatePosition":
+                await initAddGeolocationModal(eqLogicId);
+        }
+    }
+
     const searchEquipment = async function (equipmentName) {
 
-        const data = `action=getEquipment&name=${equipmentName}`;
+        const data = `action=getEquipmentsByName&name=${equipmentName}`;
 
         try {
             const response = await $.ajax({
@@ -291,6 +329,30 @@ $(function () {
             console.error('Error fetching equipments:', error);
         }
     };
+    // send ajax call to get equipments from broker and parent object
+    const getEquipement = async function (eqLogicId) {
+        let data = `action=getEquipmentById&eqLogicId=${eqLogicId}`;
+
+        try {
+            const response = await $.ajax({
+                url: 'plugins/geoloc/core/ajax/geoloc.ajax.php',
+                type: 'POST',
+                data,
+                cache: false,
+                processData: false,
+            });
+
+            const returnData = JSON.parse(response);
+            if (returnData.state !== 'ok') {
+                $.fn.showAlert({message: returnData.result, level: 'error'});
+                return;
+            }
+
+            return returnData;
+        } catch (error) {
+            console.error('Error fetching equipments:', error);
+        }
+    };
 
     const loadEquipmentsList = async function () {
         const objectParent = $('select#parentObjectSelector');
@@ -300,26 +362,26 @@ $(function () {
         }
     }
 
-    const initPage = async function () {
-        const mainMap = buildMap('map');
-        displayableObjects = new DisplayableObjects(mainMap);
-        const objectParent = $('select#parentObjectSelector');
+    const initAddGeolocationModal = async function (eqLogicId) {
+        let readonly = false;
+        let equipmentName = '';
+        let equipment;
 
-        // build on first load
-        await loadEquipmentsList();
+        if (eqLogicId) {
+            const data = await getEquipement(eqLogicId);
+            if (data) {
+                equipment = data.result;
+                equipmentName = equipment.fullHumanName;
+                readonly = true;
+            }
+        }
 
-        // build on select change
-        objectParent.on('change', async function () {
-            await loadEquipmentsList();
-        });
-
-        $('.eqLogicAction[data-action=addGeolocation]').off('click').on('click', function () {
-            let dialog_message = `
+        let dialog_message = `
 <form name="ajaxForm"
     <div class="row" id="searchContainer">
         <div class="form-group col-md-12" style="margin-bottom: 30px">
             <label for="eqLogicId" class="control-label">Nom de l'équipement</label>
-            <input type="text" class="form-control" id="eqLogicId" name="eqLogicId" placeholder="Nom de l'équipement">
+            <input type="text" class="form-control" id="eqLogicId" name="eqLogicId" placeholder="Nom de l'équipement" ${readonly} value="${equipmentName}">
         </div>
     </div>
     <div id="actionForm" style="display: none;">
@@ -339,88 +401,115 @@ $(function () {
     </div>
 </form>
         `;
-            let addGeolocationMap
+        let addGeolocationMap
 
-            const handleAutocompleteSelect = async function (event, ui) {
-                const $actionForm = $('#actionForm');
-                if (!ui.item.id) {
-                    $actionForm.hide();
-                    return;
-                }
+        const handleAddLocationForm = function (object) {
+            $('#eqLogicId').data('selected-id', object.id);
+            $('#latitude').val(object.latitude);
+            $('#longitude').val(object.longitude);
 
-                const object = {
-                    id: ui.item.id,
-                    name: ui.item.label,
-                    latitude: ui.item.latitude,
-                    longitude: ui.item.longitude,
-                    display: true
-                };
-
-                $('#eqLogicId').data('selected-id', ui.item.id);
-                $('#latitude').val(object.latitude);
-                $('#longitude').val(object.longitude);
-
-                $actionForm.show();
-                if (!addGeolocationMap) {
-                    addGeolocationMap = buildMap('addGeolocationMap');
-                }
-                const addGeolocationObject = new DisplayableObjects(addGeolocationMap);
-                if (object.latitude && object.longitude) {
-                    addGeolocationObject.addObject(object);
-                    addGeolocationObject.centerMap();
-                }
-
-                $('button#resetView').off('click').on('click', function () {
-                    addGeolocationObject.resetMapDefaultPosition();
-                });
-
-                const onclickMap = function (e) {
-                    addGeolocationObject.removeObject({id: 0}); // remove previously clicked position
-                    // create a new object with the new position
-                    addGeolocationObject.addObject({
-                            id: 0,
-                            name: 'Nouvelle position',
-                            latitude: e.latlng.lat,
-                            longitude: e.latlng.lng,
-                            display: true,
-                        },
-                        'green');
-                    $('#latitude').val(e.latlng.lat);
-                    $('#longitude').val(e.latlng.lng);
-                }
-                addGeolocationMap.on('click', onclickMap);
-            };
-
-            const bindAddGeolocationModal = async function () {
-                $('#eqLogicId').autocomplete({
-                        appendTo: '#searchContainer',
-                        source: async function (request, response) {
-                            const data = await searchEquipment(request.term);
-                            if (!data || !data.state || data.state !== 'ok' || data.result.length === 0) {
-                                response([{value: "", label: "Aucun équipement trouvé", id: null}]);
-                                return;
-                            }
-                            response(data.result.map(equipment => (
-                                        {
-                                            label: equipment.fullHumanName,
-                                            value: equipment.fullHumanName,
-                                            id: equipment.id,
-                                            latitude: equipment.latitude,
-                                            longitude: equipment.longitude
-                                        }
-                                    )
-                                )
-                            );
-                        },
-                        minLength: 3,
-                        select: handleAutocompleteSelect,
-                    }
-                );
+            $('#actionForm').show();
+            if (!addGeolocationMap) {
+                addGeolocationMap = buildMap('addGeolocationMap');
+            }
+            const addGeolocationObject = new DisplayableObjects(addGeolocationMap);
+            if (object.latitude && object.longitude) {
+                addGeolocationObject.addObject(object);
+                addGeolocationObject.centerMap();
             }
 
-            initModal('large', "Géolocaliser un équipement", dialog_message, 'addGeolocation', bindAddGeolocationModal);
+            $('button#resetView').off('click').on('click', function () {
+                addGeolocationObject.resetMapDefaultPosition();
+            });
+
+            const onclickMap = function (e) {
+                addGeolocationObject.removeObject({id: 0}); // remove previously clicked position
+                // create a new object with the new position
+                addGeolocationObject.addObject({
+                        id: 0,
+                        name: 'Nouvelle position',
+                        latitude: e.latlng.lat,
+                        longitude: e.latlng.lng,
+                        display: true,
+                    },
+                    'green');
+                $('#latitude').val(e.latlng.lat);
+                $('#longitude').val(e.latlng.lng);
+            }
+            addGeolocationMap.on('click', onclickMap);
+        }
+
+        const handleAutocompleteSelect = async function (event, ui) {
+            if (!ui.item.id) {
+                $('#actionForm').hide();
+                return;
+            }
+
+            const object = {
+                id: ui.item.id,
+                name: ui.item.label,
+                latitude: ui.item.latitude,
+                longitude: ui.item.longitude,
+                display: true
+            };
+
+            handleAddLocationForm(object);
+        };
+
+        const bindAddGeolocationModal = async function () {
+            if (equipment) {
+                $('#eqLogicId').data('selected-id', equipment.id);
+                $('#latitude').val(equipment.latitude);
+                $('#longitude').val(equipment.longitude);
+                handleAddLocationForm(equipment);
+                return
+            }
+            // don't need autocomplete if we already have an equipment
+            $('#eqLogicId').autocomplete({
+                    appendTo: '#searchContainer',
+                    source: async function (request, response) {
+                        const data = await searchEquipment(request.term);
+                        if (!data || !data.state || data.state !== 'ok' || data.result.length === 0) {
+                            response([{value: "", label: "Aucun équipement trouvé", id: null}]);
+                            return;
+                        }
+                        response(data.result.map(equipment => (
+                                    {
+                                        label: equipment.fullHumanName,
+                                        value: equipment.fullHumanName,
+                                        id: equipment.id,
+                                        latitude: equipment.latitude,
+                                        longitude: equipment.longitude
+                                    }
+                                )
+                            )
+                        );
+                    },
+                    minLength: 3,
+                    select: handleAutocompleteSelect,
+                }
+            );
+        }
+
+        initModal('large', "Géolocaliser un équipement", dialog_message, 'addGeolocation', bindAddGeolocationModal);
+    };
+
+    const initPage = async function () {
+        const mainMap = buildMap('map');
+        displayableObjects = new DisplayableObjects(mainMap);
+        const objectParent = $('select#parentObjectSelector');
+
+        // build on first load
+        await loadEquipmentsList();
+
+        // build on select change
+        objectParent.on('change', async function () {
+            await loadEquipmentsList();
         });
 
+        $('.eqLogicAction[data-action=addGeolocation]').off('click').on('click', function () {
+            initAddGeolocationModal();
+        });
     }
 
     initPage();

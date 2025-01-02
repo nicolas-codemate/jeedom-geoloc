@@ -1,0 +1,15 @@
+.light .leaflet-popup-content-wrapper {
+    background: white;
+}
+
+.dark .leaflet-popup-content-wrapper {
+    background: black;
+}
+
+.light .leaflet-popup-tip {
+    background: white;
+}
+
+.dark .leaflet-popup-tip {
+    background: black;
+}

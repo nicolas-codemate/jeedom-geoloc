@@ -37,11 +37,12 @@ sendVarToJS('eqType', $plugin->getId());
                     <br>
                     <span>{{Géolocaliser un équipement}}</span>
                 </div>
-                <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocalisableEquipment">
-                    <i class="fas fa-plus-circle"></i>
-                    <br>
-                    <span>{{Ajouter un équipement géolocalisable}}</span>
-                </div>
+                <!--                TODO ?-->
+                <!--                <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocalisableEquipment">-->
+                <!--                    <i class="fas fa-plus-circle"></i>-->
+                <!--                    <br>-->
+                <!--                    <span>{{Ajouter un équipement géolocalisable}}</span>-->
+                <!--                </div>-->
                 <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
                     <i class="fas fa-wrench"></i>
                     <br>
@@ -75,6 +76,7 @@ sendVarToJS('eqType', $plugin->getId());
     <!-- Inclusion du fichier javascript du plugin (dossier, nom_du_fichier, extension_du_fichier, id_du_plugin) -->
     <?php
     include_file('desktop', 'leaflet', 'css', 'geoloc');
+    include_file('desktop', 'custom-leaflet', 'css', 'geoloc');
     include_file('desktop', 'leaflet', 'js', 'geoloc');
     include_file('desktop', 'geoloc', 'js', 'geoloc');
 

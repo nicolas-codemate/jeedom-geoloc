@@ -98,7 +98,7 @@ try {
 
             return;
         }
-        case "getEquipment":
+        case "getEquipmentsByName":
         {
             $eqName = init('name');
 
@@ -118,6 +118,20 @@ try {
 
             return;
         }
+        case "getEquipmentById":
+        {
+            $eqLogicId = init('eqLogicId');
+
+            /** @var eqLogic|null $eqLogic */
+            $eqLogic = eqLogic::byId($eqLogicId);
+            if (!$eqLogic) {
+                ajax::error(__('Équipement introuvable', __FILE__));
+            }
+
+            ajax::success(new GeolocalisableEquipment($eqLogic));
+
+            return;
+        }
         case "addGeolocation":
         {
             $eqLogicId = init('eqLogicId');
@@ -126,7 +140,7 @@ try {
 
             /** @var eqLogic|null $eqLogic */
             $eqLogic = eqLogic::byId($eqLogicId);
-            if (null === $eqLogicId) {
+            if (!$eqLogicId) {
                 ajax::error(__('Équipement introuvable', __FILE__));
             }
 
@@ -154,6 +168,21 @@ try {
             DB::commit();
 
             ajax::success();
+        }
+        case "getGeolocationHistory": {
+            $eqLogicId = init('eqLogicId');
+
+            /** @var eqLogic|null $eqLogic */
+            $eqLogic = eqLogic::byId($eqLogicId);
+            if (null === $eqLogicId) {
+                ajax::error(__('Équipement introuvable', __FILE__));
+            }
+
+            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+            $geolocalisableEquipment->buildCoordinateHistory();
+
+            ajax::success($geolocalisableEquipment->getCoordinateHistory());
+
         }
         default:
             throw new RuntimeException(__('Aucune méthode correspondante à', __FILE__).' : '.$action);

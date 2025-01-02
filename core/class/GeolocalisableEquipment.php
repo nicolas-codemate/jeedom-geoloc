@@ -1,10 +1,18 @@
 <?php
 
 include('Coordinate.php');
+include('CoordinateHistory.php');
 
 final class GeolocalisableEquipment implements JsonSerializable
 {
+    private const OBJECT_SEPARATOR = '||';
+
     private $coordinate;
+
+    /**
+     * @var CoordinateHistory[]
+     */
+    private $coordinateHistory;
     private $eqLogic;
 
     private $id;
@@ -86,13 +94,77 @@ final class GeolocalisableEquipment implements JsonSerializable
         return $this->icon;
     }
 
+    /**
+     * @return CoordinateHistory[]|null
+     */
+    public function getCoordinateHistory(): ?array
+    {
+        return $this->coordinateHistory;
+    }
+
+    public function buildCoordinateHistory(?DateTime $startDate = null, ?DateTime $endDate = null): void
+    {
+        /** @var cmd|null $cmdLatitude */
+        $cmdLatitude = cmd::byEqLogicIdCmdName($this->eqLogic->getId(), geolocCmd::LATITUDE_CMD_NAME);
+        /** @var cmd|null $cmdLongitude */
+        $cmdLongitude = cmd::byEqLogicIdCmdName($this->eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
+
+        if ('1' !== $cmdLongitude->getIsHistorized() || '1' !== $cmdLatitude->getIsHistorized()) {
+            return;
+        }
+
+        /** @var history[] $latitudeHistory */
+        $latitudeHistory = $cmdLatitude->getHistory($startDate, $endDate);
+        /** @var history[] $longitudeHistory */
+        $longitudeHistory = $cmdLongitude->getHistory($startDate, $endDate);
+
+        // ensure we got full coordinates history
+
+        /** @var array<int, array{latitude?: float, longitude?: float}> $history */
+        $history = [];
+        foreach ($latitudeHistory as $historyValue) {
+            /** @var string|null $latitudeDate */
+            $latitudeDate = $historyValue->getDatetime();
+            if (null === $latitudeDate) {
+                continue;
+            }
+
+            $latitudeDate = new DateTime($latitudeDate);
+
+            $history[$latitudeDate->getTimestamp()] = ['latitude' => $historyValue->getValue()];
+        }
+
+        /** @var CoordinateHistory[] $toReturn */
+        $this->coordinateHistory = [];
+
+        foreach ($longitudeHistory as $historyValue) {
+            /** @var string|null $latitudeDate */
+            $longitudeDate = $historyValue->getDatetime();
+            if (null === $longitudeDate) {
+                continue;
+            }
+
+            $longitudeDate = new DateTime($longitudeDate);
+
+            if (false === \array_key_exists($longitudeDate->getTimestamp(), $history)) {
+                continue; // skip if we don't have latitude for this longitude
+            }
+
+            $this->coordinateHistory[] = new CoordinateHistory(
+                new Coordinate($history[$longitudeDate->getTimestamp()]['latitude'], $historyValue->getValue()),
+                $longitudeDate
+            );
+        }
+    }
+
     public function jsonSerialize(): array
     {
         return [
             'id' => $this->id,
             'name' => $this->name,
             'humanName' => $this->humanName,
-            'fullHumanName' => $this->fullHumanName,
+            'fullHumanName' => str_replace(self::OBJECT_SEPARATOR, ' - ', $this->fullHumanName),
+            'parents' => str_replace(self::OBJECT_SEPARATOR, ' - ', $this->buildParents()),
             'icon' => $this->icon,
             'latitude' => $this->coordinate ? $this->coordinate->getLatitude() : null,
             'longitude' => $this->coordinate ? $this->coordinate->getLongitude() : null,
@@ -114,6 +186,15 @@ final class GeolocalisableEquipment implements JsonSerializable
         $fullHumanName = array_reverse($fullHumanName);
         $fullHumanName[] = $eqLogic->getName();
 
-        return implode(' - ', $fullHumanName);
+        return implode(self::OBJECT_SEPARATOR, $fullHumanName);
+    }
+
+    private function buildParents(): string
+    {
+        $toReturn = explode(self::OBJECT_SEPARATOR, $this->fullHumanName);
+        // remove last item
+        array_pop($toReturn);
+
+        return implode(self::OBJECT_SEPARATOR, $toReturn);
     }
 }
