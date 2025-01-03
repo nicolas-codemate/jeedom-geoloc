@@ -402,10 +402,10 @@ $(async function () {
         if (getHistory) {
             data += '&getHistory=true';
             if (startDate) {
-                data += `&startDate=${startDate.toISOString()}`;
+                data += `&startDate=${startDate.toDateString()}`;
             }
             if (endDate) {
-                data += `&endDate=${endDate.toISOString()}`;
+                data += `&endDate=${endDate.toDateString()}`;
             }
         }
 
@@ -622,6 +622,18 @@ $(async function () {
 
         const endDate = new Date();
 
+
+        const startDateString = startDate.toLocaleDateString('fr', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        const endDateString = endDate.toLocaleDateString('fr', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
         let dialog_message = `
 <div class="container-fluid">
     <div class="col-xs-12" style="margin-bottom:20px" id="historyModalHeader"></div>
@@ -631,13 +643,13 @@ $(async function () {
             <div class="col-md-6">
                 <div class="form-group">
                     <label class="control-label" for="historyStartDate">Date de début:</label>
-                    <input type="text" id="historyStartDate" class="form-control input-sm in_datepicker" autocomplete="off">
+                    <input type="text" id="historyStartDate" class="form-control input-sm in_datepicker" autocomplete="off" value="${startDateString}">
                 </div>
-                </div>
-                <div class="col-md-6">
+            </div>
+            <div class="col-md-6">
                 <div class="form-group">
                     <label class="control-label" for="historyEndDate">Date de fin:</label>
-                    <input type="text" id="historyEndDate" class="form-control input-sm in_datepicker" autocomplete="off">
+                    <input type="text" id="historyEndDate" class="form-control input-sm in_datepicker" autocomplete="off" value="${endDateString}">
                 </div>
             </div>
         <div id="coordinateHistoryTable"></div>
@@ -746,19 +758,26 @@ $(async function () {
             const $endDate = $('#historyEndDate');
 
             const datepickerCommonOptions = {
-                dateFormat: 'yy-mm-dd',
+                dateFormat: 'dd/mm/yy',
                 changeMonth: true,
                 changeYear: true,
                 maxDate: new Date(),
                 gotoCurrent: true,
+                showButtonPanel: true,
+                todayBtn: 'linked',
             }
 
             $startDate.datepicker({...datepickerCommonOptions, defaultDate: '-1y'});
             $endDate.datepicker({...datepickerCommonOptions, defaultDate: '0'});
 
             const buildDateRange = function () {
-                let startDate = new Date($startDate.val());
-                let endDate = new Date($endDate.val());
+                const parseDate = function (dateString) {
+                    const parts = dateString.split('/');
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                };
+
+                let startDate = parseDate($startDate.val());
+                let endDate = parseDate($endDate.val());
 
                 // check if date is valid
                 if (isNaN(startDate.getTime())) {
