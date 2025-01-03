@@ -25,7 +25,7 @@ if (!isConnect()) {
 
 <form>
     <div class="col-sm-6">
-        <legend><i class="fas fa-folder-open"></i>{{Coordonée et zoom par défaut de la carte}}</legend>
+        <legend><i class="fas fa-folder-open"></i>{{Coordonnées et zoom par défaut de la carte}}</legend>
         <div class="form-group row">
             <label for="defaultLatitude" class="col-sm-6 col-form-label">{{Latitude}}</label>
             <div class="col-sm-6">
