@@ -77,6 +77,7 @@ sendVarToJS('eqType', $plugin->getId());
     <?php
     include_file('desktop', 'leaflet', 'css', 'geoloc');
     include_file('desktop', 'custom-leaflet', 'css', 'geoloc');
+    include_file('desktop', 'custom', 'css', 'geoloc');
     include_file('desktop', 'leaflet', 'js', 'geoloc');
     include_file('desktop', 'geoloc', 'js', 'geoloc');
 

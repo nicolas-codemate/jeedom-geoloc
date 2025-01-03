@@ -1,4 +1,4 @@
-$(function () {
+$(async function () {
 
     class DisplayableObjects {
         constructor(map) {
@@ -30,8 +30,7 @@ $(function () {
             delete this.objects[object.id];
         }
 
-        buildMarker(object, color = 'red') {
-
+        buildPopup(object, marker) {
             let className = 'light';
             const currentTheme = $('body').attr('data-theme')
             if (currentTheme.endsWith('Dark')) {
@@ -53,7 +52,18 @@ $(function () {
     <a class="btn btn-warning btn-xs map-action" data-action="updatePosition" data-eqLogic-id="${object.id}"><i class="fa fa-pen"></i> Modifier position</a>
 </div>
 `;
+            marker
+                .bindPopup(customPopup, {className})
+                .on('popupopen', function () {
+                        $('.map-action').off('click').on('click', async function () {
+                            await mapActionCallback($(this).data('action'), $(this).data('eqlogicId'));
+                        });
+                    }
+                )
+            ;
+        }
 
+        buildMarker(object, color = 'red') {
             const marker = L.marker([object.latitude, object.longitude], {
                 icon: L.icon({
                     iconUrl: `/plugins/geoloc/desktop/css/images/marker-icon-2x-${color}.png`,
@@ -64,15 +74,11 @@ $(function () {
                     shadowSize: [41, 41]
                 })
             }).addTo(this.map);
-            marker
-                .bindPopup(customPopup, {className})
-                .on('popupopen', function () {
-                        $('.map-action').off('click').on('click', function () {
-                            mapActionCallback($(this).data('action'), $(this).data('eqlogicId'));
-                        });
-                    }
-                )
-            ;
+
+            if (object.id !== 0) {
+                // don't create popup for the new position marker
+                this.buildPopup(object, marker);
+            }
             this.objects[object.id].marker = marker;
         }
 
@@ -165,6 +171,9 @@ $(function () {
     }
 
     const initModal = function (size, title, message, ajaxAction, onShownCallback) {
+
+        let hasSuccess = false;
+
         bootbox.confirm({
             title,
             message,
@@ -185,7 +194,10 @@ $(function () {
                 }
             },
             onHide: async function () {
-                await loadEquipmentsList();
+                if (hasSuccess) {
+                    // only reload equipments list if we have a success
+                    await loadEquipmentsList();
+                }
             },
             callback: function (result) {
                 if (!result) {
@@ -221,7 +233,7 @@ $(function () {
 
                             return;
                         }
-                        // loadEquipmentsList();
+                        hasSuccess = true;
                         $.fn.showAlert({message: 'Succès', level: 'success'});
                     },
                     cache: false,
@@ -385,7 +397,7 @@ $(function () {
         </div>
     </div>
     <div id="actionForm" style="display: none;">
-        <div class="form-group col-lg-4">
+        <div class="form-group col-lg-4 col-md-5 col-xs-6">
             <div>
                 <button type="button" style="margin-bottom: 10px;" id="resetView" class="btn btn-default">Réinitialiser la vue</button>
             </div>
@@ -395,18 +407,29 @@ $(function () {
             <label for="longitude" class="control-label">Longitude</label>
             <input type="text" class="form-control" id="longitude" name="longitude" placeholder="Longitude">
         </div>
-        <div class="form-group col-lg-8">
+        <div class="form-group col-lg-8 col-md-7 col-xs-6">
             <div id="addGeolocationMap" style="height:400px;"></div>
         </div>
     </div>
 </form>
         `;
         let addGeolocationMap
+        let $latitude;
+        let $longitude;
+        let $acceptButton;
+
+        const disableAcceptButton = function () {
+            $acceptButton.attr('disabled', 'disabled');
+            $acceptButton.addClass('disabled');
+        }
+
+        const enableAcceptButton = function () {
+            $acceptButton.removeAttr('disabled');
+            $acceptButton.removeClass('disabled');
+        }
 
         const handleAddLocationForm = function (object) {
             $('#eqLogicId').data('selected-id', object.id);
-            $('#latitude').val(object.latitude);
-            $('#longitude').val(object.longitude);
 
             $('#actionForm').show();
             if (!addGeolocationMap) {
@@ -414,8 +437,12 @@ $(function () {
             }
             const addGeolocationObject = new DisplayableObjects(addGeolocationMap);
             if (object.latitude && object.longitude) {
+                $latitude.val(object.latitude);
+                $longitude.val(object.longitude);
+                object.display = true;
                 addGeolocationObject.addObject(object);
                 addGeolocationObject.centerMap();
+                enableAcceptButton();
             }
 
             $('button#resetView').off('click').on('click', function () {
@@ -433,8 +460,9 @@ $(function () {
                         display: true,
                     },
                     'green');
-                $('#latitude').val(e.latlng.lat);
-                $('#longitude').val(e.latlng.lng);
+                $latitude.val(e.latlng.lat);
+                $longitude.val(e.latlng.lng);
+                enableAcceptButton();
             }
             addGeolocationMap.on('click', onclickMap);
         }
@@ -457,13 +485,39 @@ $(function () {
         };
 
         const bindAddGeolocationModal = async function () {
+            $acceptButton = $('.bootbox-accept');
+            $latitude = $('#latitude');
+            $longitude = $('#longitude');
+
+            disableAcceptButton();
+
             if (equipment) {
                 $('#eqLogicId').data('selected-id', equipment.id);
-                $('#latitude').val(equipment.latitude);
-                $('#longitude').val(equipment.longitude);
+                $latitude.val(equipment.latitude);
+                $longitude.val(equipment.longitude);
+                if ($latitude.val() && $longitude.val()) {
+                    enableAcceptButton();
+                }
                 handleAddLocationForm(equipment);
                 return
             }
+
+            $longitude.on('input', function () {
+                if ($(this).val() === '') {
+                    disableAcceptButton();
+                } else {
+                    enableAcceptButton();
+                }
+            });
+
+            $latitude.on('input', function () {
+                if ($(this).val() === '') {
+                    disableAcceptButton();
+                } else {
+                    enableAcceptButton();
+                }
+            });
+
             // don't need autocomplete if we already have an equipment
             $('#eqLogicId').autocomplete({
                     appendTo: '#searchContainer',
@@ -512,5 +566,5 @@ $(function () {
         });
     }
 
-    initPage();
+    await initPage();
 });

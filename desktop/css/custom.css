@@ -1,0 +1,3 @@
+#eqLogicThumbnailContainer > div > span.name > strong {
+    max-width: revert;
+}
