@@ -95,6 +95,14 @@ $(async function () {
             this.map.removeLayer(this.objects[object.id].marker);
         }
 
+        openPopup(object) {
+            this.objects[object.id].marker.openPopup();
+        }
+
+        closePopup(object) {
+            this.objects[object.id].marker.closePopup();
+        }
+
         resetMapDefaultPosition() {
             this.map.setView(
                 [defaultCordinate.defaultLatitude, defaultCordinate.defaultLongitude],
@@ -313,6 +321,27 @@ $(async function () {
 
         container.append(items.join(''));
 
+        // $('.eqLogicVisible').on('click', (e) => console.log('je suis la'));
+
+        $('.eqLogicDisplayCard')
+            .on('mouseenter', function () {
+                const objectId = $(this).data('object');
+                displayableObjects.openPopup(displayableObjects.objects[objectId]);
+            })
+            .on('mouseleave', function () {
+                const objectId = $(this).data('object');
+                displayableObjects.closePopup(displayableObjects.objects[objectId]);
+
+            });
+
+        $('.eqLogicDisplayCard > span.name').on('click', function () {
+            const objectId = $(this).parent().data('object');
+            const checkbox = $(`input.eqLogicVisible[data-object-id="${objectId}"]`);
+            checkbox.prop('checked', !checkbox.prop('checked'));
+            checkbox.trigger('change');
+        });
+
+
         bindToggleVisibility();
 
         displayableObjects.centerMap();
@@ -367,11 +396,17 @@ $(async function () {
         }
     };
     // send ajax call to get equipments from broker and parent object
-    const getEquipement = async function (eqLogicId, getHistory = false) {
+    const getEquipment = async function (eqLogicId, getHistory = false, startDate, endDate) {
         let data = `action=getEquipmentById&eqLogicId=${eqLogicId}`;
 
         if (getHistory) {
             data += '&getHistory=true';
+            if (startDate) {
+                data += `&startDate=${startDate.toISOString()}`;
+            }
+            if (endDate) {
+                data += `&endDate=${endDate.toISOString()}`;
+            }
         }
 
         try {
@@ -409,7 +444,7 @@ $(async function () {
         let equipment;
 
         if (eqLogicId) {
-            const data = await getEquipement(eqLogicId);
+            const data = await getEquipment(eqLogicId);
             if (data) {
                 equipment = data.result;
                 equipmentName = equipment.fullHumanName;
@@ -582,63 +617,30 @@ $(async function () {
             return;
         }
 
-        const data = await getEquipement(eqLogicId, true);
-        if (!data) {
-            $.fn.showAlert({message: 'Erreur lors de la récupération de l\'équipement', level: 'error'});
-            return;
-        }
+        const startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 1);
 
-        const equipment = data.result;
-
-        if (!equipment.latitude || !equipment.longitude) {
-            $.fn.showAlert({message: 'Cet équipement n\'a pas de position géographique', level: 'error'});
-            return;
-        }
-
-        let cordinationHistory = `<span class="label label-warning">Aucun historique connu</span>`;
-
-        if (equipment.coordinateHistory && equipment.coordinateHistory.length > 0) {
-            cordinationHistory = `
-                <table class="table table-bordered table-condensed table-striped" id="coordinateHistoryTable">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Latitude</th>
-                            <th>Longitude</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${equipment.coordinateHistory.map(history => `
-                            <tr data-date="${history.date}" style="cursor: pointer">
-                                <td>
-                                    ${new Date(history.date).toLocaleDateString(
-                'fr',
-                {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}
-            )}
-                                </td>
-                                <td>${history.coordinate.latitude.toPrecision(6)}</td>
-                                <td>${history.coordinate.longitude.toPrecision(6)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `
-        }
+        const endDate = new Date();
 
         let dialog_message = `
 <div class="container-fluid">
-    <div class="col-xs-12" style="margin-bottom:20px">
-        <h3>
-            <img class="lazy" src="plugins/jMQTT/core/img/node_${equipment.icon}.svg" style="min-height: 24px; height:24px; width:auto;padding-top:1px;">
-            ${equipment.name}
-        </h3>
-        <span class="label labelObjectHuman">
-            ${equipment.parents}
-        </span>
-    </div>
+    <div class="col-xs-12" style="margin-bottom:20px" id="historyModalHeader"></div>
+    
     <div class="col-md-4">
         <h4>Historique des positions</h4>
-        ${cordinationHistory}
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label class="control-label" for="historyStartDate">Date de début:</label>
+                    <input type="text" id="historyStartDate" class="form-control input-sm in_datepicker" autocomplete="off">
+                </div>
+                </div>
+                <div class="col-md-6">
+                <div class="form-group">
+                    <label class="control-label" for="historyEndDate">Date de fin:</label>
+                    <input type="text" id="historyEndDate" class="form-control input-sm in_datepicker" autocomplete="off">
+                </div>
+            </div>
+        <div id="coordinateHistoryTable"></div>
     </div>
     <div class="col-md-8">
         <div id="historyMap" style="height:600px;"></div>
@@ -697,7 +699,7 @@ $(async function () {
                 "reverse": false,
                 "hardwareAcceleration": true,
             }).addTo(historyMap);
-            historyMap.fitBounds(historyLine.getBounds());
+            historyMap.fitBounds(historyLine.getBounds().pad(0.1));
 
             $('table#coordinateHistoryTable tbody tr')
                 .on('mouseenter', function () {
@@ -721,6 +723,14 @@ $(async function () {
                 historyMap = buildMap('historyMap', 8);
             }
 
+            // remove all previous markers and polylines except the map
+            historyMap.eachLayer(function (layer) {
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker) {
+                        historyMap.removeLayer(layer);
+                    }
+                }
+            );
+
             const addGeolocationObject = new DisplayableObjects(historyMap);
             if (object.coordinateHistory && object.coordinateHistory.length > 0) {
                 handleHistoryCoordinates(object);
@@ -731,7 +741,110 @@ $(async function () {
             }
         }
 
+        const handleHistoryDateFilter = function() {
+            const $startDate = $('#historyStartDate');
+            const $endDate = $('#historyEndDate');
+
+            const datepickerCommonOptions = {
+                dateFormat: 'yy-mm-dd',
+                changeMonth: true,
+                changeYear: true,
+                maxDate: new Date(),
+                gotoCurrent: true,
+            }
+
+            $startDate.datepicker({...datepickerCommonOptions, defaultDate: '-1y'});
+            $endDate.datepicker({...datepickerCommonOptions, defaultDate: '0'});
+
+            const buildDateRange = function () {
+                let startDate = new Date($startDate.val());
+                let endDate = new Date($endDate.val());
+
+                // check if date is valid
+                if (isNaN(startDate.getTime())) {
+                    startDate = null;
+                }
+
+                if (isNaN(endDate.getTime())) {
+                    endDate = null;
+                }
+
+                return {
+                    startDate: startDate,
+                    endDate: endDate
+                }
+            }
+
+            $startDate.on('change', async function () {
+                const dateRange = buildDateRange();
+                await handleEquipmentHistory(dateRange.startDate, dateRange.endDate);
+            });
+            $endDate.on('change', async function () {
+                const dateRange = buildDateRange();
+                await handleEquipmentHistory(dateRange.startDate, dateRange.endDate);
+            });
+        }
+
         const handleHistoryModal = async function () {
+            handleHistoryDateFilter();
+            await handleEquipmentHistory(startDate, endDate);
+        }
+
+        const handleEquipmentHistory = async function (startDate, endDate) {
+            const data = await getEquipment(eqLogicId, true, startDate, endDate);
+            if (!data) {
+                $.fn.showAlert({message: 'Erreur lors de la récupération de l\'équipement', level: 'error'});
+                return;
+            }
+
+            let equipment = data.result;
+
+            if (!equipment.latitude || !equipment.longitude) {
+                $.fn.showAlert({message: 'Cet équipement n\'a pas de position géographique', level: 'error'});
+                return;
+            }
+
+            let cordinationHistory = `<span class="label label-warning">Aucun historique connu</span>`;
+
+            if (equipment.coordinateHistory && equipment.coordinateHistory.length > 0) {
+                cordinationHistory = `
+                <table class="table table-bordered table-condensed table-striped" id="coordinateHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${equipment.coordinateHistory.map(history => `
+                            <tr data-date="${history.date}" style="cursor: pointer">
+                                <td>
+                                    ${new Date(history.date).toLocaleDateString(
+                    'fr',
+                    {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}
+                )}
+                                </td>
+                                <td>${history.coordinate.latitude.toPrecision(6)}</td>
+                                <td>${history.coordinate.longitude.toPrecision(6)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `
+            }
+
+            $('#historyModalHeader').html(`
+            <h3>
+                <img class="lazy" src="plugins/jMQTT/core/img/node_${equipment.icon}.svg" style="min-height: 24px; height:24px; width:auto;padding-top:1px;">
+                ${equipment.name}
+            </h3>
+            <span class="label labelObjectHuman">
+                ${equipment.parents}
+            </span>
+            `);
+
+            $('#coordinateHistoryTable').html(cordinationHistory);
             handleMap(equipment);
         }
 

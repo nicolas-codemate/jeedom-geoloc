@@ -121,7 +121,18 @@ try {
         case "getEquipmentById":
         {
             $eqLogicId = init('eqLogicId');
-            $getHistory = init('getHistory');
+            $getHistory = init('getHistory', false);
+            $startDate = init('startDate', null);
+            $endDate = init('endDate', null);
+
+            if ($startDate) {
+                $startDate = new DateTime($startDate);
+            }
+
+            if ($endDate) {
+                $endDate = new DateTime($endDate);
+                $endDate->add(new DateInterval('P1D')); // the query SQL don't manage the time, so we need to add one day to the end date
+            }
 
             /** @var eqLogic|null $eqLogic */
             $eqLogic = eqLogic::byId($eqLogicId);
@@ -131,8 +142,8 @@ try {
 
             $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
 
-            if($getHistory) {
-                $geolocalisableEquipment->buildCoordinateHistory();
+            if ($getHistory) {
+                $geolocalisableEquipment->buildCoordinateHistory($startDate, $endDate);
             }
 
             ajax::success($geolocalisableEquipment);

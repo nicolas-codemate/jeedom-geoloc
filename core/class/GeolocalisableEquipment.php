@@ -113,10 +113,13 @@ final class GeolocalisableEquipment implements JsonSerializable
             return;
         }
 
+        $startDateAsString = $startDate ? $startDate->format('Y-m-d') : null;
+        $endDateAsString = $endDate ? $endDate->format('Y-m-d') : null;
+
         /** @var history[] $latitudeHistory */
-        $latitudeHistory = $cmdLatitude->getHistory($startDate, $endDate);
+        $latitudeHistory = $cmdLatitude->getHistory($startDateAsString, $endDateAsString);
         /** @var history[] $longitudeHistory */
-        $longitudeHistory = $cmdLongitude->getHistory($startDate, $endDate);
+        $longitudeHistory = $cmdLongitude->getHistory($startDateAsString, $endDateAsString);
 
         // ensure we got full coordinates history
 
