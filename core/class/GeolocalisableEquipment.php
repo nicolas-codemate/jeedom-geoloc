@@ -168,6 +168,9 @@ final class GeolocalisableEquipment implements JsonSerializable
             'icon' => $this->icon,
             'latitude' => $this->coordinate ? $this->coordinate->getLatitude() : null,
             'longitude' => $this->coordinate ? $this->coordinate->getLongitude() : null,
+            'coordinateHistory' => array_map(static function (CoordinateHistory $coordinateHistory) {
+                return $coordinateHistory->jsonSerialize();
+            }, $this->coordinateHistory),
         ];
     }
 

@@ -1,9 +1,11 @@
 .light .leaflet-popup-content-wrapper {
     background: white;
+    color: rgb(115, 115, 115);
 }
 
 .dark .leaflet-popup-content-wrapper {
     background: black;
+    color: rgb(172, 172, 172);
 }
 
 .light .leaflet-popup-tip {
@@ -12,4 +14,8 @@
 
 .dark .leaflet-popup-tip {
     background: black;
+}
+
+.leaflet-popup-content {
+    font-size: 14px;
 }

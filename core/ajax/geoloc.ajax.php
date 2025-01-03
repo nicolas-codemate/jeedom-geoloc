@@ -121,6 +121,7 @@ try {
         case "getEquipmentById":
         {
             $eqLogicId = init('eqLogicId');
+            $getHistory = init('getHistory');
 
             /** @var eqLogic|null $eqLogic */
             $eqLogic = eqLogic::byId($eqLogicId);
@@ -128,7 +129,13 @@ try {
                 ajax::error(__('Équipement introuvable', __FILE__));
             }
 
-            ajax::success(new GeolocalisableEquipment($eqLogic));
+            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+
+            if($getHistory) {
+                $geolocalisableEquipment->buildCoordinateHistory();
+            }
+
+            ajax::success($geolocalisableEquipment);
 
             return;
         }

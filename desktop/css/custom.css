@@ -1,3 +1,15 @@
 #eqLogicThumbnailContainer > div > span.name > strong {
     max-width: revert;
 }
+
+body > div.bootbox.modal.fade.in > div.modal-xl {
+    width: 90%;
+    margin-left: 5%;
+    margin-right: 5%;
+}
+
+.leaflet-popup-content .control-panel {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 28px;
+}

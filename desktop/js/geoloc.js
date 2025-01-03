@@ -1,5 +1,11 @@
 $(async function () {
 
+    const currentTheme = $('body').attr('data-theme');
+    let popupClassName = 'light';
+    if (currentTheme.endsWith('Dark')) {
+        popupClassName = 'dark';
+    }
+
     class DisplayableObjects {
         constructor(map) {
             this.objects = {};
@@ -31,12 +37,6 @@ $(async function () {
         }
 
         buildPopup(object, marker) {
-            let className = 'light';
-            const currentTheme = $('body').attr('data-theme')
-            if (currentTheme.endsWith('Dark')) {
-                className = 'dark';
-            }
-
             let customPopup = `
 <h3>
     <img class="lazy" src="plugins/jMQTT/core/img/node_${object.icon}.svg" style="min-height: 24px; height:24px; width:auto;padding-top:1px;">
@@ -53,7 +53,7 @@ $(async function () {
 </div>
 `;
             marker
-                .bindPopup(customPopup, {className})
+                .bindPopup(customPopup, {className: popupClassName})
                 .on('popupopen', function () {
                         $('.map-action').off('click').on('click', async function () {
                             await mapActionCallback($(this).data('action'), $(this).data('eqlogicId'));
@@ -75,14 +75,13 @@ $(async function () {
                 })
             }).addTo(this.map);
 
-            if (object.id !== 0) {
+            if (object.hasOwnProperty('displayPopup') && object.displayPopup) {
                 // don't create popup for the new position marker
                 this.buildPopup(object, marker);
             }
             this.objects[object.id].marker = marker;
         }
 
-        // build a method to center the map where I can see all the markers
         centerMap() {
             if (0 === this.getVisibleObjects().length) {
                 this.resetMapDefaultPosition();
@@ -128,6 +127,12 @@ $(async function () {
         switch (action) {
             case "updatePosition":
                 await initAddGeolocationModal(eqLogicId);
+                break;
+            case "getHistory":
+                await initGeolocationHistory(eqLogicId);
+                break;
+            default:
+                console.error('Unknown action:', action);
         }
     }
 
@@ -156,8 +161,12 @@ $(async function () {
         }
     }
 
-    const buildMap = function (htmlElementId = 'map') {
-        const {defaultLatitude, defaultLongitude, defaultZoom} = defaultCordinate;
+    const buildMap = function (htmlElementId = 'map', customZoom) {
+        let {defaultLatitude, defaultLongitude, defaultZoom} = defaultCordinate;
+
+        if (customZoom) {
+            defaultZoom = customZoom;
+        }
 
         const mainMap = L.map(htmlElementId).setView([defaultLatitude, defaultLongitude], defaultZoom);
 
@@ -170,11 +179,11 @@ $(async function () {
         return mainMap;
     }
 
-    const initModal = function (size, title, message, ajaxAction, onShownCallback) {
+    const initConfirmModal = function (size, title, message, ajaxAction, onShownCallback) {
 
         let hasSuccess = false;
 
-        bootbox.confirm({
+        const options = {
             title,
             message,
             size,
@@ -241,11 +250,27 @@ $(async function () {
                     processData: false,
                 });
             }
-        });
+        }
+
+        bootbox.confirm(options);
+    };
+    const initDialogModal = function (size, title, message, onShownCallback) {
+        const options = {
+            title,
+            message,
+            size,
+        };
+
+        if (onShownCallback) {
+            options.onShown = onShownCallback;
+        }
+
+        bootbox.dialog(options);
     };
 
     const buildObject = function (jeeObject) {
         jeeObject.display = true; // by default, we display the object
+        jeeObject.displayPopup = true; // by default, we display the object
         displayableObjects.addObject(jeeObject);
         return `
 <div class="eqLogicDisplayCard cursor displayAsTable" data-object="${jeeObject.id}">
@@ -342,8 +367,12 @@ $(async function () {
         }
     };
     // send ajax call to get equipments from broker and parent object
-    const getEquipement = async function (eqLogicId) {
+    const getEquipement = async function (eqLogicId, getHistory = false) {
         let data = `action=getEquipmentById&eqLogicId=${eqLogicId}`;
+
+        if (getHistory) {
+            data += '&getHistory=true';
+        }
 
         try {
             const response = await $.ajax({
@@ -545,7 +574,168 @@ $(async function () {
             );
         }
 
-        initModal('large', "Géolocaliser un équipement", dialog_message, 'addGeolocation', bindAddGeolocationModal);
+        initConfirmModal('large', "Géolocaliser un équipement", dialog_message, 'addGeolocation', bindAddGeolocationModal);
+    };
+
+    const initGeolocationHistory = async function (eqLogicId) {
+        if (!eqLogicId) {
+            return;
+        }
+
+        const data = await getEquipement(eqLogicId, true);
+        if (!data) {
+            $.fn.showAlert({message: 'Erreur lors de la récupération de l\'équipement', level: 'error'});
+            return;
+        }
+
+        const equipment = data.result;
+
+        if (!equipment.latitude || !equipment.longitude) {
+            $.fn.showAlert({message: 'Cet équipement n\'a pas de position géographique', level: 'error'});
+            return;
+        }
+
+        let cordinationHistory = `<span class="label label-warning">Aucun historique connu</span>`;
+
+        if (equipment.coordinateHistory && equipment.coordinateHistory.length > 0) {
+            cordinationHistory = `
+                <table class="table table-bordered table-condensed table-striped" id="coordinateHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${equipment.coordinateHistory.map(history => `
+                            <tr data-date="${history.date}" style="cursor: pointer">
+                                <td>
+                                    ${new Date(history.date).toLocaleDateString(
+                'fr',
+                {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}
+            )}
+                                </td>
+                                <td>${history.coordinate.latitude.toPrecision(6)}</td>
+                                <td>${history.coordinate.longitude.toPrecision(6)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `
+        }
+
+        let dialog_message = `
+<div class="container-fluid">
+    <div class="col-xs-12" style="margin-bottom:20px">
+        <h3>
+            <img class="lazy" src="plugins/jMQTT/core/img/node_${equipment.icon}.svg" style="min-height: 24px; height:24px; width:auto;padding-top:1px;">
+            ${equipment.name}
+        </h3>
+        <span class="label labelObjectHuman">
+            ${equipment.parents}
+        </span>
+    </div>
+    <div class="col-md-4">
+        <h4>Historique des positions</h4>
+        ${cordinationHistory}
+    </div>
+    <div class="col-md-8">
+        <div id="historyMap" style="height:600px;"></div>
+    </div>
+</div>
+        `;
+
+        let historyMap;
+
+        const getHistoryPopup = function (history) {
+            return `<div>
+                <label class="control-label">Date:</label> ${new Date(history.date).toLocaleDateString('fr', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            })}
+                <br>
+                <label class="control-label">Latitude:</label> ${history.coordinate.latitude.toPrecision(6)}
+                <br>
+                <label class="control-label">Longitude:</label> ${history.coordinate.longitude.toPrecision(6)}
+            </div>`;
+        }
+
+        const handleHistoryCoordinates = function (object) {
+            const latLngs = [];
+            const markers = {};
+            object.coordinateHistory.forEach(history => {
+                const latLng = [history.coordinate.latitude, history.coordinate.longitude];
+                latLngs.push(latLng);
+                const marker = L.circleMarker(latLng, {
+                    radius: 4,
+                    color: "#0000FF",
+                    fillColor: "#0000FF",
+                    fillOpacity: 1
+                }).addTo(historyMap);
+                marker.bindPopup(getHistoryPopup(history), {className: popupClassName})
+                    .on('mouseover', function () {
+                        this.openPopup();
+                    })
+                    .on('mouseout', function () {
+                        this.closePopup();
+                    });
+                markers[history.date] = marker;
+            });
+
+            const historyLine = L.polyline.antPath(latLngs, {
+                "delay": 1500,
+                "dashArray": [10, 20],
+                "weight": 5,
+                "color": "#0000FF",
+                "pulseColor": "#FFFFFF",
+                "paused": false,
+                "reverse": false,
+                "hardwareAcceleration": true,
+            }).addTo(historyMap);
+            historyMap.fitBounds(historyLine.getBounds());
+
+            $('table#coordinateHistoryTable tbody tr')
+                .on('mouseenter', function () {
+                    const date = $(this).data('date');
+                    let currentMarker = markers[date];
+                    if (currentMarker) {
+                        currentMarker.openPopup();
+                    }
+                })
+                .on('mouseleave', function () {
+                    const date = $(this).data('date');
+                    let currentMarker = markers[date];
+                    if (currentMarker) {
+                        currentMarker.closePopup();
+                    }
+                });
+        };
+
+        const handleMap = function (object) {
+            if (!historyMap) {
+                historyMap = buildMap('historyMap', 8);
+            }
+
+            const addGeolocationObject = new DisplayableObjects(historyMap);
+            if (object.coordinateHistory && object.coordinateHistory.length > 0) {
+                handleHistoryCoordinates(object);
+            } else {
+                object.display = true;
+                addGeolocationObject.addObject(object);
+                addGeolocationObject.centerMap();
+            }
+        }
+
+        const handleHistoryModal = async function () {
+            handleMap(equipment);
+        }
+
+        initDialogModal('xl', "Historique des positions", dialog_message, handleHistoryModal);
     };
 
     const initPage = async function () {
