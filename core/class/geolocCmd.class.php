@@ -19,6 +19,7 @@ class geolocCmd extends cmd
             ->setTemplate('mobile', 'default')
             ->setTemplate('dashboard', 'default')
             ->setIsHistorized(1)
+            ->setConfiguration('historizeMode', 'none')
             ->setType('info')
             ->setSubType('numeric')
             ->setDisplay('icon', '<i class=\"fas fa-search-location \">')
