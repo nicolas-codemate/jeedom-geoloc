@@ -185,7 +185,9 @@ try {
 
             DB::commit();
 
-            ajax::success();
+            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+
+            ajax::success($geolocalisableEquipment);
         }
         case "getGeolocationHistory": {
             $eqLogicId = init('eqLogicId');

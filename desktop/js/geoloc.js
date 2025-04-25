@@ -23,6 +23,23 @@ $(async function () {
             }
         }
 
+        updateObject(updatedObject) {
+            const object = this.objects[updatedObject.id];
+            if (!object) {
+                return;
+            }
+            this.removeMarker(object);
+            // update position
+            Object.assign(this.objects[object.id], {
+                latitude: updatedObject.latitude,
+                longitude: updatedObject.longitude
+            });
+            if (object.display) {
+                this.buildMarker(object);
+            }
+            this.centerMap();
+        }
+
         hideObject(object) {
             this.objects[object.id].display = false;
             this.removeMarker(object);
@@ -88,7 +105,7 @@ $(async function () {
                 return;
             }
             const group = new L.featureGroup(Object.values(this.getVisibleObjects()).map(object => object.marker));
-            this.map.flyToBounds(group.getBounds().pad(0.1), {animate: true, duration: 1});
+            this.map.flyToBounds(group.getBounds().pad(0.1), {animate: true, duration: 1, maxZoom: 17});
         }
 
         removeMarker(object) {
@@ -187,7 +204,7 @@ $(async function () {
         return mainMap;
     }
 
-    const initConfirmModal = function (size, title, message, ajaxAction, onShownCallback) {
+    const initConfirmModal = function (size, title, message, ajaxAction, onShownCallback, onHideCallback) {
 
         let hasSuccess = false;
 
@@ -211,9 +228,8 @@ $(async function () {
                 }
             },
             onHide: async function () {
-                if (hasSuccess) {
-                    // only reload equipments list if we have a success
-                    await loadEquipmentsList();
+                if (onHideCallback) {
+                    onHideCallback();
                 }
             },
             callback: function (result) {
@@ -251,6 +267,7 @@ $(async function () {
                             return;
                         }
                         hasSuccess = true;
+                        displayableObjects.updateObject(returnData.result);
                         $.fn.showAlert({message: 'Succès', level: 'success'});
                     },
                     cache: false,
@@ -320,8 +337,6 @@ $(async function () {
         const items = buildItems(data.result);
 
         container.append(items.join(''));
-
-        // $('.eqLogicVisible').on('click', (e) => console.log('je suis la'));
 
         $('.eqLogicDisplayCard')
             .on('mouseenter', function () {
@@ -457,7 +472,7 @@ $(async function () {
     <div class="row" id="searchContainer">
         <div class="form-group col-md-12" style="margin-bottom: 30px">
             <label for="eqLogicId" class="control-label">Nom de l'équipement</label>
-            <input type="text" class="form-control" id="eqLogicId" name="eqLogicId" placeholder="Nom de l'équipement" ${readonly} value="${equipmentName}">
+            <input type="text" class="form-control" id="eqLogicId" name="eqLogicId" placeholder="Nom de l'équipement" ${readonly ? "readonly" : ''} value="${equipmentName}">
         </div>
     </div>
     <div id="actionForm" style="display: none;">
@@ -548,6 +563,14 @@ $(async function () {
             handleAddLocationForm(object);
         };
 
+        const onHideCallback = async function () {
+            if (!equipment) {
+                // no equipement, we need to refresh the list to newly position of our equipment
+                await loadEquipmentsList();
+            }
+            // if equipment is provided, we don't need to refresh the list since we are updating the position
+        };
+
         const bindAddGeolocationModal = async function () {
             $acceptButton = $('.bootbox-accept');
             $latitude = $('#latitude');
@@ -609,7 +632,7 @@ $(async function () {
             );
         }
 
-        initConfirmModal('large', "Géolocaliser un équipement", dialog_message, 'addGeolocation', bindAddGeolocationModal);
+        initConfirmModal('large', "Géolocaliser un équipement", dialog_message, 'addGeolocation', bindAddGeolocationModal, onHideCallback);
     };
 
     const initGeolocationHistory = async function (eqLogicId) {
