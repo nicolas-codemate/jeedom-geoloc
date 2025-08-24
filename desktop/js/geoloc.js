@@ -100,24 +100,56 @@ $(async function () {
         }
 
         centerMap() {
-            if (0 === this.getVisibleObjects().length) {
+            const visibleObjects = this.getVisibleObjects();
+            if (0 === visibleObjects.length) {
+                // Force clear any remaining markers when no objects should be visible
+                this.clearAllMapMarkers();
                 this.resetMapDefaultPosition();
                 return;
             }
-            const group = new L.featureGroup(Object.values(this.getVisibleObjects()).map(object => object.marker));
+            
+            // Filter objects that actually have markers
+            const markersArray = visibleObjects
+                .filter(object => object.marker)
+                .map(object => object.marker);
+                
+            if (markersArray.length === 0) {
+                // Force clear any remaining markers when no valid markers exist
+                this.clearAllMapMarkers();
+                this.resetMapDefaultPosition();
+                return;
+            }
+            
+            const group = new L.featureGroup(markersArray);
             this.map.flyToBounds(group.getBounds().pad(0.1), {animate: true, duration: 1, maxZoom: 17});
         }
 
+        clearAllMapMarkers() {
+            // Force remove all marker-like layers from the map
+            this.map.eachLayer((layer) => {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker || layer instanceof L.Polyline) {
+                    this.map.removeLayer(layer);
+                }
+            });
+        }
+
         removeMarker(object) {
-            this.map.removeLayer(this.objects[object.id].marker);
+            if (this.objects[object.id] && this.objects[object.id].marker) {
+                this.map.removeLayer(this.objects[object.id].marker);
+                delete this.objects[object.id].marker;
+            }
         }
 
         openPopup(object) {
-            this.objects[object.id].marker.openPopup();
+            if (this.objects[object.id] && this.objects[object.id].marker) {
+                this.objects[object.id].marker.openPopup();
+            }
         }
 
         closePopup(object) {
-            this.objects[object.id].marker.closePopup();
+            if (this.objects[object.id] && this.objects[object.id].marker) {
+                this.objects[object.id].marker.closePopup();
+            }
         }
 
         resetMapDefaultPosition() {
@@ -133,6 +165,7 @@ $(async function () {
         }
 
         reset() {
+            // Remove all markers from objects
             for (const key in this.objects) {
                 if (this.objects.hasOwnProperty(key)) {
                     const element = this.objects[key];
@@ -142,6 +175,17 @@ $(async function () {
                     }
                 }
             }
+            
+            // Force clear all layers except the tile layer to ensure no ghost markers
+            this.map.eachLayer((layer) => {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker || layer instanceof L.Polyline) {
+                    this.map.removeLayer(layer);
+                }
+            });
+            
+            // Clear the objects collection
+            this.objects = {};
+            
             this.resetMapDefaultPosition();
         }
     }
@@ -338,6 +382,30 @@ $(async function () {
 
         container.append(items.join(''));
 
+        // Restore saved visibility states for this parent object
+        const currentParentId = $('select#parentObjectSelector').val();
+        const savedVisibility = getChildObjectsVisibility(currentParentId);
+        
+        if (savedVisibility) {
+            // Apply saved visibility states
+            Object.keys(savedVisibility).forEach(objectId => {
+                const checkbox = $(`input.eqLogicVisible[data-object-id="${objectId}"]`);
+                const isVisible = savedVisibility[objectId];
+                checkbox.prop('checked', isVisible);
+                
+                const object = displayableObjects.objects[objectId];
+                if (object) {
+                    if (isVisible) {
+                        object.display = true;
+                        displayableObjects.buildMarker(object);
+                    } else {
+                        object.display = false;
+                        displayableObjects.hideObject(object);
+                    }
+                }
+            });
+        }
+
         $('.eqLogicDisplayCard')
             .on('mouseenter', function () {
                 const objectId = $(this).data('object');
@@ -374,12 +442,22 @@ $(async function () {
             if ($(this).is(':checked')) {
                 object.display = true;
                 displayableObjects.buildMarker(object);
-                displayableObjects.centerMap();
             } else {
                 object.display = false;
                 displayableObjects.hideObject(object);
-                displayableObjects.centerMap();
             }
+            
+            // Always center map after visibility change (will clear if no visible objects)
+            displayableObjects.centerMap();
+            
+            // Save current visibility state for all child objects of current parent
+            const currentParentId = $('select#parentObjectSelector').val();
+            const currentVisibility = {};
+            $('.eqLogicVisible').each(function() {
+                const childObjectId = $(this).data('object-id');
+                currentVisibility[childObjectId] = $(this).is(':checked');
+            });
+            saveChildObjectsVisibility(currentParentId, currentVisibility);
         });
     }
 
@@ -893,16 +971,43 @@ $(async function () {
         initDialogModal('xl', "Historique des positions", dialog_message, handleHistoryModal);
     };
 
+    const saveSelectedParentObject = function(objectId) {
+        localStorage.setItem('geoloc_selected_parent_object', objectId);
+    };
+
+    const getSelectedParentObject = function() {
+        return localStorage.getItem('geoloc_selected_parent_object');
+    };
+
+    const saveChildObjectsVisibility = function(parentObjectId, childObjectsVisibility) {
+        const key = `geoloc_child_visibility_${parentObjectId}`;
+        localStorage.setItem(key, JSON.stringify(childObjectsVisibility));
+    };
+
+    const getChildObjectsVisibility = function(parentObjectId) {
+        const key = `geoloc_child_visibility_${parentObjectId}`;
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : null;
+    };
+
     const initPage = async function () {
         const mainMap = buildMap('map');
         displayableObjects = new DisplayableObjects(mainMap);
         const objectParent = $('select#parentObjectSelector');
+
+        // restore previous selection if exists
+        const savedObjectId = getSelectedParentObject();
+        if (savedObjectId && objectParent.find(`option[value="${savedObjectId}"]`).length > 0) {
+            objectParent.val(savedObjectId);
+        }
 
         // build on first load
         await loadEquipmentsList();
 
         // build on select change
         objectParent.on('change', async function () {
+            const selectedObjectId = $(this).val();
+            saveSelectedParentObject(selectedObjectId);
             await loadEquipmentsList();
         });
 
