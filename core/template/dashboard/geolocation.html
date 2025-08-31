@@ -1,0 +1,65 @@
+<div class="eqLogic-widget geoloc-dashboard-widget" data-eqlogic_id="#id#" data-object_id="#object_id#">
+    <center class="widget" style="border-radius: 8px; padding: 8px; margin-bottom: 3px; border: 1px solid rgba(128,128,128,0.3); min-height: 300px; position: relative;">
+        <div style="position: absolute; top: 8px; left: 8px; font-size: 11px; color: #999; z-index: 1000;">
+            <i class="fa fa-map-marker"></i> Géolocalisation
+        </div>
+        <div class="geoloc-dashboard-map" id="geoloc-map-#object_id#" style="height: 300px; width: 100%; border-radius: 4px; margin-top: 20px;">
+            <div class="geoloc-loading" style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999;">
+                <i class="fa fa-spinner fa-spin" style="margin-right: 8px;"></i>
+                Chargement de la carte...
+            </div>
+        </div>
+        <div class="geoloc-status" style="position: absolute; bottom: 8px; right: 8px; font-size: 10px; color: #999; z-index: 1000;">
+            <span class="geoloc-equipment-count">0</span> équipement(s)
+        </div>
+    </center>
+</div>
+
+<script>
+if (!window.geolocDashboardInitialized) {
+    window.geolocDashboardInitialized = true;
+    
+    // Include Leaflet CSS and JS if not already loaded
+    if (!window.L) {
+        const leafletCSS = document.createElement('link');
+        leafletCSS.rel = 'stylesheet';
+        leafletCSS.href = 'plugins/geoloc/desktop/css/leaflet.css';
+        document.head.appendChild(leafletCSS);
+
+        const leafletJS = document.createElement('script');
+        leafletJS.src = 'plugins/geoloc/desktop/js/leaflet.js';
+        leafletJS.onload = function() {
+            loadDashboardScript();
+        };
+        document.head.appendChild(leafletJS);
+    } else {
+        loadDashboardScript();
+    }
+    
+    function loadDashboardScript() {
+        const dashboardJS = document.createElement('script');
+        dashboardJS.src = 'plugins/geoloc/desktop/js/geolocation-dashboard.js';
+        document.head.appendChild(dashboardJS);
+        
+        const dashboardCSS = document.createElement('link');
+        dashboardCSS.rel = 'stylesheet';
+        dashboardCSS.href = 'plugins/geoloc/desktop/css/geolocation-dashboard.css';
+        document.head.appendChild(dashboardCSS);
+    }
+}
+
+// Initialize this specific widget instance
+$(document).ready(function() {
+    if (window.GeolocDashboard) {
+        window.GeolocDashboard.initWidget('#object_id#');
+    } else {
+        // Wait for the script to load
+        const checkScript = setInterval(function() {
+            if (window.GeolocDashboard) {
+                clearInterval(checkScript);
+                window.GeolocDashboard.initWidget('#object_id#');
+            }
+        }, 100);
+    }
+});
+</script>

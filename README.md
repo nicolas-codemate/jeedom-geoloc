@@ -35,6 +35,53 @@ Par défaut, seul l'historique de la dernière année est remonté pour limiter 
 
 Il est possible de modifier la période de recherche en modifiant les dates de début et de fin.
 
+## Widget Dashboard
+
+Le plugin propose un widget dashboard permettant d'afficher une carte de géolocalisation directement sur le dashboard Jeedom pour les utilisateurs non-administrateurs.
+
+### Installation du widget dashboard
+
+1. **Accéder à la configuration des objets**
+   - Allez dans `Outils` → `Objets` dans l'interface d'administration Jeedom
+   - Sélectionnez l'objet parent qui contient vos équipements géolocalisés
+
+2. **Configurer l'onglet Dashboard**
+   - Dans la configuration de l'objet, accédez à l'onglet `Dashboard`
+   - Dans la section `Widgets`, cliquez sur `+ Ajouter un widget`
+
+3. **Paramètres du widget**
+   - **Type** : Sélectionnez `Template`
+   - **Template** : Sélectionnez `core/template/dashboard/geolocation.html`
+   - **Taille** : Personnalisez la taille selon vos préférences (recommandé : largeur 400px, hauteur 320px minimum)
+
+4. **Enregistrer et visualiser**
+   - Cliquez sur `Sauvegarder`
+   - Le widget apparaîtra automatiquement sur le dashboard des utilisateurs ayant accès à cet objet
+
+### Fonctionnalités du widget
+
+- **Mode lecture seule** : Affichage uniquement, aucune modification possible
+- **Actualisation automatique** : Mise à jour des positions toutes les 60 secondes
+- **Marqueurs informatifs** : Clic sur un marqueur pour voir nom et coordonnées
+- **Auto-zoom** : La carte s'ajuste automatiquement pour afficher tous les équipements
+- **Design responsive** : S'adapte aux différentes tailles d'écran
+- **Compteur d'équipements** : Affiche le nombre d'équipements géolocalisés
+
+### Personnalisation
+
+Le widget peut être personnalisé en ajoutant des classes CSS :
+- `size-small` : Version compacte (250x220px)
+- `size-medium` : Taille standard (400x300px)
+- `size-large` : Version étendue (500x400px)
+
+Pour appliquer une taille, ajoutez la classe dans la configuration du widget sous `Classes CSS additionnelles`.
+
+### Dépannage
+
+- **Carte vide** : Vérifiez que l'objet contient des équipements avec commandes `latitude` et `longitude`
+- **Erreur de chargement** : Vérifiez les permissions d'accès au plugin et à l'objet
+- **Marqueurs manquants** : Vérifiez que les coordonnées sont valides (nombres décimaux)
+
 ### Créer un équipement géolocalisable
 
 TODO
