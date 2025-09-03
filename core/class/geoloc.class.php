@@ -30,8 +30,19 @@ class geoloc extends eqLogic
     /*
     * Permet de définir les possibilités de personnalisation du widget (en cas d'utilisation de la fonction 'toHtml' par exemple)
     * Tableau multidimensionnel - exemple: array('custom' => true, 'custom::layout' => false)
-    public static $_widgetPossibility = array();
     */
+    public static $_widgetPossibility = array(
+        'custom' => true,
+        'custom::layout' => false,
+        'parameters' => array(
+            'height' => array(
+                'name' => 'Hauteur (px)',
+                'type' => 'input',
+                'default' => 300,
+                'allow_displayType' => array('dashboard'),
+            ),
+        ),
+    );
 
     /*
     * Permet de crypter/décrypter automatiquement des champs de configuration du plugin
@@ -171,8 +182,43 @@ class geoloc extends eqLogic
 
     /*
     * Permet de modifier l'affichage du widget (également utilisable par les commandes)
-    public function toHtml($_version = 'dashboard') {}
     */
+    public function toHtml($_version = 'dashboard') {
+        $replace = $this->preToHtml($_version);
+        if (!is_array($replace)) {
+            return $replace;
+        }
+
+        $version = jeedom::versionAlias($_version);
+        
+        // Seul le dashboard est supporté pour ce widget
+        if ($version != 'dashboard') {
+            return '';
+        }
+
+        // Récupérer l'objet parent
+        $object = $this->getObject();
+        if (!is_object($object)) {
+            return '';
+        }
+
+        // Variables du template
+        $replace['#object_id#'] = $object->getId();
+        $replace['#object_name#'] = $object->getName();
+        $replace['#height#'] = $this->getConfiguration('height', 300);
+
+        // Charger les ressources CSS et JS
+        $this->loadResources();
+
+        $template = getTemplate('core', $version, 'geolocation', 'geoloc');
+        return template_replace($replace, $template);
+    }
+
+    private function loadResources() {
+        // Inclure les ressources CSS et JS nécessaires
+        echo '<link rel="stylesheet" href="plugins/geoloc/desktop/css/geolocation.css">';
+        echo '<script src="plugins/geoloc/desktop/js/geolocation.js"></script>';
+    }
 
     /*     * **********************Getteur Setteur*************************** */
 }

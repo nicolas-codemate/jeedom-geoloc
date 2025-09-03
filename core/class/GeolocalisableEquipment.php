@@ -12,7 +12,7 @@ final class GeolocalisableEquipment implements JsonSerializable
     /**
      * @var CoordinateHistory[]
      */
-    private $coordinateHistory;
+    private $coordinateHistory = [];
     private $eqLogic;
 
     private $id;
