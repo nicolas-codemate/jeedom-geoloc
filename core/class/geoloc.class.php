@@ -184,9 +184,9 @@ class geoloc extends eqLogic
     * Permet de modifier l'affichage du widget (également utilisable par les commandes)
     */
     public function toHtml($_version = 'dashboard') {
-        $replace = $this->preToHtml($_version);
-        if (!is_array($replace)) {
-            return $replace;
+        // Pour un widget de carte, on peut bypasser preToHtml si l'équipement est valide
+        if (!$this->getIsEnable() || !$this->getIsVisible()) {
+            return '';
         }
 
         $version = jeedom::versionAlias($_version);
@@ -202,22 +202,17 @@ class geoloc extends eqLogic
             return '';
         }
 
-        // Variables du template
+        // Variables de remplacement pour le template
+        $replace = array();
+        $replace['#id#'] = $this->getId();
+        $replace['#name#'] = $this->getName();
+        $replace['#hide_name#'] = '';
         $replace['#object_id#'] = $object->getId();
         $replace['#object_name#'] = $object->getName();
         $replace['#height#'] = $this->getConfiguration('height', 300);
 
-        // Charger les ressources CSS et JS
-        $this->loadResources();
-
-        $template = getTemplate('core', $version, 'geolocation', 'geoloc');
+        $template = getTemplate('core', $version, 'geolocation.template', __CLASS__);
         return template_replace($replace, $template);
-    }
-
-    private function loadResources() {
-        // Inclure les ressources CSS et JS nécessaires
-        echo '<link rel="stylesheet" href="plugins/geoloc/desktop/css/geolocation.css">';
-        echo '<script src="plugins/geoloc/desktop/js/geolocation.js"></script>';
     }
 
     /*     * **********************Getteur Setteur*************************** */

@@ -990,6 +990,167 @@ $(async function () {
         return saved ? JSON.parse(saved) : null;
     };
 
+    const initAddWidgetModal = function () {
+        let dialog_message = `
+<form name="addWidgetForm">
+    <div class="row">
+        <div class="form-group col-md-12" style="margin-bottom: 20px">
+            <label for="widgetName" class="control-label">Nom du widget de carte</label>
+            <input type="text" class="form-control" id="widgetName" name="widgetName" placeholder="Ex: Carte Salon" required>
+        </div>
+    </div>
+    <div class="row">
+        <div class="form-group col-md-12" style="margin-bottom: 20px">
+            <label for="parentObject" class="control-label">Objet parent (dont afficher les équipements)</label>
+            <select class="form-control" id="parentObject" name="parentObject" required>
+                <option value="">Sélectionner un objet</option>
+            </select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="form-group col-md-12">
+            <label for="widgetHeight" class="control-label">Hauteur de la carte (px)</label>
+            <input type="number" class="form-control" id="widgetHeight" name="widgetHeight" placeholder="300" min="200" max="800" value="300">
+        </div>
+    </div>
+</form>
+        `;
+
+        const options = {
+            title: "Créer un widget de carte géolocalisation",
+            message: dialog_message,
+            size: 'normal',
+            buttons: {
+                confirm: {
+                    label: 'Créer le widget',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'Annuler',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (!result) {
+                    return;
+                }
+
+                const widgetName = $('#widgetName').val().trim();
+                const parentObjectId = $('#parentObject').val();
+                const widgetHeight = $('#widgetHeight').val() || 300;
+
+                if (!widgetName || !parentObjectId) {
+                    $.fn.showAlert({message: 'Veuillez remplir tous les champs obligatoires', level: 'error'});
+                    return false;
+                }
+
+                // Désactiver les boutons pendant la création
+                const $acceptButton = $('.bootbox-accept');
+                const $cancelButton = $('.bootbox-cancel');
+                [$acceptButton, $cancelButton].forEach(button => {
+                    button.attr('disabled', 'disabled');
+                    button.addClass('disabled');
+                });
+                $acceptButton.html('Création en cours...');
+
+                // Appel AJAX pour créer l'équipement
+                createWidgetEquipment(widgetName, parentObjectId, widgetHeight);
+            }
+        };
+
+        bootbox.confirm(options);
+        
+        // Peupler le select des objets une fois la modal affichée
+        setTimeout(() => {
+            populateObjectSelect();
+        }, 100);
+    };
+
+    const populateObjectSelect = function() {
+        // Appel AJAX pour récupérer la liste des objets
+        $.ajax({
+            type: "POST",
+            url: "core/ajax/object.ajax.php",
+            data: {
+                action: "all"
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.state === 'ok') {
+                    const $select = $('#parentObject');
+                    $select.empty();
+                    $select.append('<option value="">Sélectionner un objet</option>');
+                    
+                    data.result.forEach(obj => {
+                        $select.append(`<option value="${obj.id}">${obj.name}</option>`);
+                    });
+                }
+            },
+            error: function (request, status, error) {
+                console.error('Erreur lors du chargement des objets:', error);
+            }
+        });
+    };
+
+    const handleError = function(request, defaultMessage) {
+        let message = defaultMessage;
+        try {
+            const response = JSON.parse(request.responseText);
+            if (response.result) {
+                message = response.result;
+            }
+        } catch (e) {
+            // Utiliser le message par défaut si parsing échoue
+        }
+        $.fn.showAlert({message: message, level: 'error'});
+        
+        // Réactiver les boutons en cas d'erreur
+        const $acceptButton = $('.bootbox-accept');
+        const $cancelButton = $('.bootbox-cancel');
+        [$acceptButton, $cancelButton].forEach(button => {
+            button.removeAttr('disabled');
+            button.removeClass('disabled');
+        });
+        $acceptButton.html('Créer le widget');
+    };
+
+    const createWidgetEquipment = function(name, objectId, height) {
+        $.ajax({
+            type: "POST",
+            url: "core/ajax/eqLogic.ajax.php",
+            data: {
+                action: "save",
+                eqLogic: JSON.stringify({
+                    id: '',
+                    name: name,
+                    logicalId: 'widget_' + Date.now(),
+                    object_id: objectId,
+                    eqType_name: 'geoloc',
+                    isEnable: 1,
+                    isVisible: 1,
+                    configuration: {
+                        height: height
+                    }
+                })
+            },
+            dataType: 'json',
+            error: function (request, status, error) {
+                handleError(request, 'Erreur lors de la création du widget');
+            },
+            success: function (data) {
+                if (data.state !== 'ok') {
+                    $.fn.showAlert({message: data.result, level: 'error'});
+                    return;
+                }
+
+                $.fn.showAlert({message: 'Widget créé avec succès !', level: 'success'});
+                
+                // Rediriger vers la page de configuration de l'équipement créé
+                loadPage('index.php?v=d&p=geoloc&m=geoloc&id=' + data.result.id);
+            }
+        });
+    };
+
     const initPage = async function () {
         const mainMap = buildMap('map');
         displayableObjects = new DisplayableObjects(mainMap);
@@ -1013,6 +1174,10 @@ $(async function () {
 
         $('.eqLogicAction[data-action=addGeolocation]').off('click').on('click', function () {
             initAddGeolocationModal();
+        });
+
+        $('.eqLogicAction[data-action=add]').off('click').on('click', function () {
+            initAddWidgetModal();
         });
     }
 

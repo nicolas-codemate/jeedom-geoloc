@@ -37,12 +37,11 @@ sendVarToJS('eqType', $plugin->getId());
                     <br>
                     <span>{{Géolocaliser un équipement}}</span>
                 </div>
-                <!--                TODO ?-->
-                <!--                <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocalisableEquipment">-->
-                <!--                    <i class="fas fa-plus-circle"></i>-->
-                <!--                    <br>-->
-                <!--                    <span>{{Ajouter un équipement géolocalisable}}</span>-->
-                <!--                </div>-->
+                <div class="cursor eqLogicAction logoPrimary" data-action="add">
+                    <i class="fas fa-plus-circle"></i>
+                    <br>
+                    <span>{{Ajouter un widget de carte}}</span>
+                </div>
                 <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
                     <i class="fas fa-wrench"></i>
                     <br>
