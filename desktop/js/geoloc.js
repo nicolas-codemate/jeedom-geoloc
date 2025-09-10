@@ -1319,6 +1319,7 @@ $(async function () {
             initAddGeolocationModal();
         });
 
+        // Widget creation from both tabs
         $('.eqLogicAction[data-action=addWidget]').off('click').on('click', function () {
             initAddWidgetModal();
         });
@@ -1338,6 +1339,30 @@ $(async function () {
         // Save widget changes button
         $('#saveWidgetChanges').off('click').on('click', function () {
             saveWidgetChanges();
+        });
+
+        // Initialize tabs
+        $('#geolocTabs a').click(function (e) {
+            e.preventDefault();
+            $(this).tab('show');
+        });
+
+        // Handle URL hash to open specific tab
+        if (window.location.hash) {
+            const hash = window.location.hash;
+            if (hash === '#widgets') {
+                $('#widgets-tab').tab('show');
+            }
+        }
+
+        // Update URL hash when tab changes
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            const target = $(e.target).attr('href');
+            if (target === '#widgets') {
+                window.location.hash = 'widgets';
+            } else {
+                history.replaceState(null, null, ' ');
+            }
         });
     }
 

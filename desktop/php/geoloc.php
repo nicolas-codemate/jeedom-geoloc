@@ -27,100 +27,139 @@ sendVarToJS('eqType', $plugin->getId());
 
 ?>
 
-<div class="row row-overflow">
-    <div class="col-xs-12 eqLogicThumbnailDisplay">
-        <div class="row">
-            <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
-            <div class="eqLogicThumbnailContainer">
-                <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocation">
-                    <i class="fas fa-location-arrow"></i>
-                    <br>
-                    <span>{{Géolocaliser un équipement}}</span>
+<!-- Navigation par onglets -->
+<ul class="nav nav-tabs" id="geolocTabs" role="tablist">
+    <li class="nav-item active">
+        <a class="nav-link" id="geolocation-tab" data-toggle="tab" href="#geolocation" role="tab">
+            <i class="fas fa-map-marked-alt"></i> {{Géolocalisation}}
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="widgets-tab" data-toggle="tab" href="#widgets" role="tab">
+            <i class="fas fa-th-large"></i> {{Widgets de carte}}
+        </a>
+    </li>
+</ul>
+
+<!-- Contenu des onglets -->
+<div class="tab-content" id="geolocTabsContent">
+    
+    <!-- Onglet Géolocalisation -->
+    <div class="tab-pane fade in active" id="geolocation" role="tabpanel">
+        <div class="row row-overflow">
+            <div class="col-xs-12 eqLogicThumbnailDisplay">
+                <div class="row">
+                    <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
+                    <div class="eqLogicThumbnailContainer">
+                        <div class="cursor eqLogicAction logoPrimary" data-action="addGeolocation">
+                            <i class="fas fa-location-arrow"></i>
+                            <br>
+                            <span>{{Géolocaliser un équipement}}</span>
+                        </div>
+                        <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
+                            <i class="fas fa-wrench"></i>
+                            <br>
+                            <span>{{Configuration}}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="cursor eqLogicAction logoPrimary" data-action="addWidget">
-                    <i class="fas fa-plus-circle"></i>
-                    <br>
-                    <span>{{Ajouter un widget de carte}}</span>
+            </div>
+            <div class="col-lg-4">
+                <legend><i class="fas fa-map"></i>&nbsp;{{Liste des équipements géolocalisables}}</legend>
+
+                <div class="input-group" style="margin:5px;">
+                    <label for="parentObjectSelector">{{Objet parent}}</label>
+                    <select id="parentObjectSelector" class="form-control" style="width: 100%;">
+                        <?php
+                        foreach ($objects as $objectId => $object) {
+                            echo '<option value="'.$objectId.'">'.str_repeat('&nbsp;', $object['parentNumber']).$object['name'].'</option>';
+                        }
+                        ?>
+                    </select>
                 </div>
-                <div class="cursor eqLogicAction logoSecondary" data-action="gotoPluginConf">
-                    <i class="fas fa-wrench"></i>
-                    <br>
-                    <span>{{Configuration}}</span>
+
+                <div class="eqLogicThumbnailContainer" id="eqLogicThumbnailContainer">
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div id="map" style="height: 800px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onglet Widgets -->
+    <div class="tab-pane fade" id="widgets" role="tabpanel">
+        <div class="row" style="margin-top: 20px;">
+            <div class="col-xs-12">
+                <!-- Actions pour les widgets -->
+                <div class="row" style="margin-bottom: 20px;">
+                    <div class="col-md-12">
+                        <a class="btn btn-success eqLogicAction" data-action="addWidget">
+                            <i class="fas fa-plus-circle"></i> {{Créer un widget de carte}}
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Tableau des widgets -->
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <i class="fas fa-th-large"></i> {{Widgets de géolocalisation}}
+                        </h3>
+                    </div>
+                    <div class="panel-body">
+                        <table class="table table-condensed table-striped" id="widgetsTable">
+                            <thead>
+                                <tr>
+                                    <th>{{Nom du widget}}</th>
+                                    <th>{{Objet parent}}</th>
+                                    <th>{{Hauteur}}</th>
+                                    <th>{{État}}</th>
+                                    <th>{{Actions}}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $geolocWidgets = eqLogic::byType('geoloc');
+                                foreach ($geolocWidgets as $widget) {
+                                    $parentObject = $widget->getObject();
+                                    $parentObjectName = $parentObject ? $parentObject->getName() : 'Aucun';
+                                    $height = $widget->getConfiguration('height', 300);
+                                    $isEnabled = $widget->getIsEnable();
+                                    $isVisible = $widget->getIsVisible();
+                                    
+                                    echo '<tr data-widget-id="'.$widget->getId().'">';
+                                    echo '<td>'.$widget->getName().'</td>';
+                                    echo '<td>'.$parentObjectName.'</td>';
+                                    echo '<td>'.$height.'px</td>';
+                                    echo '<td>';
+                                    if ($isEnabled && $isVisible) {
+                                        echo '<span class="label label-success">Actif</span>';
+                                    } elseif ($isEnabled && !$isVisible) {
+                                        echo '<span class="label label-warning">Masqué</span>';
+                                    } else {
+                                        echo '<span class="label label-danger">Inactif</span>';
+                                    }
+                                    echo '</td>';
+                                    echo '<td>';
+                                    echo '<a class="btn btn-default btn-xs widget-action" data-action="edit" data-widget-id="'.$widget->getId().'" title="Modifier">';
+                                    echo '<i class="fas fa-pencil-alt"></i></a>';
+                                    echo ' <a class="btn btn-danger btn-xs widget-action" data-action="remove" data-widget-id="'.$widget->getId().'" title="Supprimer">';
+                                    echo '<i class="fas fa-minus-circle"></i></a>';
+                                    echo '</td>';
+                                    echo '</tr>';
+                                }
+                                ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <legend><i class="fas fa-map"></i>&nbsp;{{Liste des équipements géolocalisables}}</legend>
-
-        <div class="input-group" style="margin:5px;">
-            <label for="parentObjectSelector">{{Objet parent}}</label>
-            <select id="parentObjectSelector" class="form-control" style="width: 100%;">
-                <?php
-                foreach ($objects as $objectId => $object) {
-                    echo '<option value="'.$objectId.'">'.str_repeat('&nbsp;', $object['parentNumber']).$object['name'].'</option>';
-                }
-                ?>
-            </select>
-        </div>
-
-        <div class="eqLogicThumbnailContainer" id="eqLogicThumbnailContainer">
-        </div>
-    </div>
-
-    <div class="col-lg-8">
-        <div id="map" style="height: 800px;"></div>
-    </div><!-- /.row row-overflow -->
-
-    <div class="col-xs-12">
-        <legend><i class="fas fa-list"></i> {{Widgets de géolocalisation}}</legend>
-        <div class="table-responsive">
-            <table class="table table-condensed tablesorter" id="widgetsTable">
-                <thead>
-                    <tr>
-                        <th>{{Nom du widget}}</th>
-                        <th>{{Objet parent}}</th>
-                        <th>{{Hauteur}}</th>
-                        <th>{{État}}</th>
-                        <th>{{Actions}}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    $geolocWidgets = eqLogic::byType('geoloc');
-                    foreach ($geolocWidgets as $widget) {
-                        $parentObject = $widget->getObject();
-                        $parentObjectName = $parentObject ? $parentObject->getName() : 'Aucun';
-                        $height = $widget->getConfiguration('height', 300);
-                        $isEnabled = $widget->getIsEnable();
-                        $isVisible = $widget->getIsVisible();
-                        
-                        echo '<tr data-widget-id="'.$widget->getId().'">';
-                        echo '<td>'.$widget->getName().'</td>';
-                        echo '<td>'.$parentObjectName.'</td>';
-                        echo '<td>'.$height.'px</td>';
-                        echo '<td>';
-                        if ($isEnabled && $isVisible) {
-                            echo '<span class="label label-success">Actif</span>';
-                        } elseif ($isEnabled && !$isVisible) {
-                            echo '<span class="label label-warning">Masqué</span>';
-                        } else {
-                            echo '<span class="label label-danger">Inactif</span>';
-                        }
-                        echo '</td>';
-                        echo '<td>';
-                        echo '<a class="btn btn-default btn-xs widget-action" data-action="edit" data-widget-id="'.$widget->getId().'" title="Modifier">';
-                        echo '<i class="fas fa-pencil-alt"></i></a>';
-                        echo ' <a class="btn btn-danger btn-xs widget-action" data-action="remove" data-widget-id="'.$widget->getId().'" title="Supprimer">';
-                        echo '<i class="fas fa-minus-circle"></i></a>';
-                        echo '</td>';
-                        echo '</tr>';
-                    }
-                    ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    
+</div><!-- /.tab-content -->
     
     <!-- Modal pour modifier les propriétés du widget -->
     <div class="modal fade" id="editWidgetModal" tabindex="-1" role="dialog">

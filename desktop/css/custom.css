@@ -52,3 +52,36 @@ body > div.bootbox.modal.fade.in > div.modal-xl {
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
+/* Tabs styling */
+#geolocTabs {
+    margin-bottom: 20px;
+}
+
+#geolocTabs .nav-link {
+    color: #333;
+}
+
+[data-theme*="Dark"] #geolocTabs .nav-link {
+    color: #ccc;
+}
+
+#geolocTabs .nav-item.active .nav-link {
+    background-color: #337ab7;
+    color: white;
+    border-color: #337ab7;
+}
+
+[data-theme*="Dark"] #geolocTabs .nav-item.active .nav-link {
+    background-color: #428bca;
+    border-color: #428bca;
+}
+
+/* Widget tab content */
+#widgets .panel {
+    margin-top: 0;
+}
+
+#widgets .btn-success {
+    margin-bottom: 20px;
+}
