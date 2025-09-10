@@ -1217,7 +1217,8 @@ $(async function () {
             url: 'core/ajax/eqLogic.ajax.php',
             data: {
                 action: 'save',
-                eqLogic: JSON.stringify(formData)
+                type: 'geoloc',  // Required parameter
+                eqLogic: JSON.stringify([formData])  // Wrap in array as expected by Jeedom
             },
             dataType: 'json',
             error: function (request, status, error) {
