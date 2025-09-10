@@ -1153,9 +1153,60 @@ $(async function () {
 
                 $.fn.showAlert({message: 'Widget créé avec succès !', level: 'success'});
                 
-                // Refresh the page to show the new widget in the list
-                location.reload();
+                // Add the new widget to the table instead of reloading
+                addWidgetToTable(data.result);
             }
+        });
+    };
+
+    const addWidgetToTable = function(widget) {
+        // Get object name for display
+        const objectName = widget.object_id ? 
+            $(`#parentObjectId option[value="${widget.object_id}"]`).text() || 'Aucun' : 
+            'Aucun';
+        
+        const height = widget.configuration?.height || 300;
+        const isEnable = widget.isEnable == '1';
+        const isVisible = widget.isVisible == '1';
+        
+        let statusHtml;
+        if (isEnable && isVisible) {
+            statusHtml = '<span class="label label-success">Actif</span>';
+        } else if (isEnable && !isVisible) {
+            statusHtml = '<span class="label label-warning">Masqué</span>';
+        } else {
+            statusHtml = '<span class="label label-danger">Inactif</span>';
+        }
+        
+        const newRow = `
+            <tr data-widget-id="${widget.id}">
+                <td>${widget.name}</td>
+                <td>${objectName}</td>
+                <td>${height}px</td>
+                <td>${statusHtml}</td>
+                <td>
+                    <a class="btn btn-default btn-xs widget-action" data-action="edit" data-widget-id="${widget.id}" title="Modifier">
+                        <i class="fas fa-pencil-alt"></i>
+                    </a>
+                    <a class="btn btn-danger btn-xs widget-action" data-action="remove" data-widget-id="${widget.id}" title="Supprimer">
+                        <i class="fas fa-minus-circle"></i>
+                    </a>
+                </td>
+            </tr>
+        `;
+        
+        $('#widgetsTable tbody').append(newRow);
+        
+        // Bind events for the new row
+        const $newRow = $(`tr[data-widget-id="${widget.id}"]`);
+        $newRow.find('.widget-action[data-action=edit]').on('click', function () {
+            const widgetId = $(this).data('widget-id');
+            initEditWidgetModal(widgetId);
+        });
+        $newRow.find('.widget-action[data-action=remove]').on('click', function () {
+            const widgetId = $(this).data('widget-id');
+            const widgetName = $(this).closest('tr').find('td:first').text();
+            removeWidget(widgetId, widgetName);
         });
     };
 
@@ -1239,10 +1290,37 @@ $(async function () {
                     level: 'success'
                 });
                 
-                // Refresh the page to show updated widget info
-                location.reload();
+                // Update the row in the table instead of reloading
+                updateWidgetTableRow(widgetId, formData);
             }
         });
+    };
+
+    const updateWidgetTableRow = function(widgetId, formData) {
+        const $row = $(`tr[data-widget-id="${widgetId}"]`);
+        if ($row.length === 0) return;
+        
+        // Update the row data
+        $row.find('td:eq(0)').text(formData.name); // Name
+        
+        // Get object name for display
+        const objectName = formData.object_id ? 
+            $(`#edit_parent_object option[value="${formData.object_id}"]`).text() : 
+            'Aucun';
+        $row.find('td:eq(1)').text(objectName); // Object parent
+        
+        $row.find('td:eq(2)').text(formData.configuration.height + 'px'); // Height
+        
+        // Update status
+        const $statusCell = $row.find('td:eq(3)');
+        $statusCell.empty();
+        if (formData.isEnable && formData.isVisible) {
+            $statusCell.html('<span class="label label-success">Actif</span>');
+        } else if (formData.isEnable && !formData.isVisible) {
+            $statusCell.html('<span class="label label-warning">Masqué</span>');
+        } else {
+            $statusCell.html('<span class="label label-danger">Inactif</span>');
+        }
     };
 
     const removeWidget = function (widgetId, widgetName) {
@@ -1298,8 +1376,15 @@ $(async function () {
     };
 
     const initPage = async function () {
-        const mainMap = buildMap('map');
-        displayableObjects = new DisplayableObjects(mainMap);
+        // Only initialize map if geolocation tab is active or will be active
+        const isGeolocationTabActive = $('#geolocation').hasClass('active') || !window.location.hash || window.location.hash !== '#widgets';
+        
+        let mainMap = null;
+        if (isGeolocationTabActive) {
+            mainMap = buildMap('map');
+            displayableObjects = new DisplayableObjects(mainMap);
+        }
+        
         const objectParent = $('select#parentObjectSelector');
 
         // restore previous selection if exists
@@ -1308,15 +1393,18 @@ $(async function () {
             objectParent.val(savedObjectId);
         }
 
-        // build on first load
-        await loadEquipmentsList();
-
-        // build on select change
-        objectParent.on('change', async function () {
-            const selectedObjectId = $(this).val();
-            saveSelectedParentObject(selectedObjectId);
+        // Only load equipments if geolocation tab is active
+        if (isGeolocationTabActive) {
+            // build on first load
             await loadEquipmentsList();
-        });
+
+            // build on select change
+            objectParent.on('change', async function () {
+                const selectedObjectId = $(this).val();
+                saveSelectedParentObject(selectedObjectId);
+                await loadEquipmentsList();
+            });
+        }
 
         $('.eqLogicAction[data-action=addGeolocation]').off('click').on('click', function () {
             initAddGeolocationModal();
@@ -1358,13 +1446,34 @@ $(async function () {
             }
         }
 
-        // Update URL hash when tab changes
+        // Update URL hash when tab changes and initialize map if needed
         $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
             const target = $(e.target).attr('href');
             if (target === '#widgets') {
                 window.location.hash = 'widgets';
-            } else {
+            } else if (target === '#geolocation') {
                 history.replaceState(null, null, ' ');
+                
+                // Initialize map if not already done
+                if (!mainMap) {
+                    mainMap = buildMap('map');
+                    displayableObjects = new DisplayableObjects(mainMap);
+                    
+                    // Load equipments for the first time
+                    const objectParent = $('select#parentObjectSelector');
+                    const savedObjectId = getSelectedParentObject();
+                    if (savedObjectId && objectParent.find(`option[value="${savedObjectId}"]`).length > 0) {
+                        objectParent.val(savedObjectId);
+                    }
+                    loadEquipmentsList();
+                    
+                    // Bind change event
+                    objectParent.on('change', async function () {
+                        const selectedObjectId = $(this).val();
+                        saveSelectedParentObject(selectedObjectId);
+                        await loadEquipmentsList();
+                    });
+                }
             }
         });
     }
