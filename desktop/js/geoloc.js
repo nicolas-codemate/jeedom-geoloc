@@ -1318,7 +1318,9 @@ $(async function () {
             initAddGeolocationModal();
         });
 
-        // Removed custom widget modal - using default Jeedom behavior
+        $('.eqLogicAction[data-action=addWidget]').off('click').on('click', function () {
+            initAddWidgetModal();
+        });
 
         // Widget management actions
         $('.widget-action[data-action=edit]').off('click').on('click', function () {
