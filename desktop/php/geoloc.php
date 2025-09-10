@@ -114,7 +114,7 @@ sendVarToJS('eqType', $plugin->getId());
                                 <tr>
                                     <th>{{Nom du widget}}</th>
                                     <th>{{Objet parent}}</th>
-                                    <th>{{Hauteur}}</th>
+                                    <th>{{Dimensions}}</th>
                                     <th>{{État}}</th>
                                     <th>{{Actions}}</th>
                                 </tr>
@@ -126,13 +126,14 @@ sendVarToJS('eqType', $plugin->getId());
                                     $parentObject = $widget->getObject();
                                     $parentObjectName = $parentObject ? $parentObject->getName() : 'Aucun';
                                     $height = $widget->getConfiguration('height', 300);
+                                    $width = $widget->getConfiguration('width', 'auto');
                                     $isEnabled = $widget->getIsEnable();
                                     $isVisible = $widget->getIsVisible();
                                     
                                     echo '<tr data-widget-id="'.$widget->getId().'">';
                                     echo '<td>'.$widget->getName().'</td>';
                                     echo '<td>'.$parentObjectName.'</td>';
-                                    echo '<td>'.$height.'px</td>';
+                                    echo '<td>'.$width.' × '.$height.'px</td>';
                                     echo '<td>';
                                     if ($isEnabled && $isVisible) {
                                         echo '<span class="label label-success">Actif</span>';
@@ -190,9 +191,27 @@ sendVarToJS('eqType', $plugin->getId());
                             </select>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="edit_height">{{Hauteur de la carte (px)}}</label>
-                            <input type="number" class="form-control" name="height" id="edit_height" min="200" max="800" value="300">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="edit_height">{{Hauteur de la carte (px)}}</label>
+                                    <input type="number" class="form-control" name="height" id="edit_height" min="200" max="800" value="300">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="edit_width">{{Largeur du widget}}</label>
+                                    <select class="form-control" name="width" id="edit_width">
+                                        <option value="auto">Automatique</option>
+                                        <option value="100%">100% de largeur</option>
+                                        <option value="300px">300px</option>
+                                        <option value="400px">400px</option>
+                                        <option value="500px">500px</option>
+                                        <option value="600px">600px</option>
+                                        <option value="800px">800px</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="form-group">

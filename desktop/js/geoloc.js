@@ -1008,9 +1008,21 @@ $(async function () {
         </div>
     </div>
     <div class="row">
-        <div class="form-group col-md-12">
+        <div class="form-group col-md-6">
             <label for="widgetHeight" class="control-label">Hauteur de la carte (px)</label>
             <input type="number" class="form-control" id="widgetHeight" name="widgetHeight" placeholder="300" min="200" max="800" value="300">
+        </div>
+        <div class="form-group col-md-6">
+            <label for="widgetWidth" class="control-label">Largeur du widget</label>
+            <select class="form-control" name="widgetWidth" id="widgetWidth">
+                <option value="auto">Automatique</option>
+                <option value="100%">100% de largeur</option>
+                <option value="300px">300px</option>
+                <option value="400px">400px</option>
+                <option value="500px">500px</option>
+                <option value="600px">600px</option>
+                <option value="800px">800px</option>
+            </select>
         </div>
     </div>
 </form>
@@ -1038,6 +1050,7 @@ $(async function () {
                 const widgetName = $('#widgetName').val().trim();
                 const parentObjectId = $('#parentObject').val();
                 const widgetHeight = $('#widgetHeight').val() || 300;
+                const widgetWidth = $('#widgetWidth').val() || 'auto';
 
                 if (!widgetName || !parentObjectId) {
                     $.fn.showAlert({message: 'Veuillez remplir tous les champs obligatoires', level: 'error'});
@@ -1054,7 +1067,7 @@ $(async function () {
                 $acceptButton.html('Création en cours...');
 
                 // Appel AJAX pour créer l'équipement
-                createWidgetEquipment(widgetName, parentObjectId, widgetHeight);
+                createWidgetEquipment(widgetName, parentObjectId, widgetHeight, widgetWidth);
             }
         };
 
@@ -1114,7 +1127,7 @@ $(async function () {
         $acceptButton.html('Créer le widget');
     };
 
-    const createWidgetEquipment = function(name, objectId, height) {
+    const createWidgetEquipment = function(name, objectId, height, width) {
         // Prepare the equipment data as an array (Jeedom expects an array of equipment)
         const eqLogicData = [{
             name: name,
@@ -1124,7 +1137,8 @@ $(async function () {
             isEnable: 1,
             isVisible: 1,
             configuration: {
-                height: parseInt(height) || 300
+                height: parseInt(height) || 300,
+                width: width || 'auto'
             }
         }];
         
@@ -1162,6 +1176,7 @@ $(async function () {
             'Aucun';
         
         const height = widget.configuration?.height || 300;
+        const width = widget.configuration?.width || 'auto';
         const isEnable = widget.isEnable == '1';
         const isVisible = widget.isVisible == '1';
         
@@ -1178,7 +1193,7 @@ $(async function () {
             <tr data-widget-id="${widget.id}">
                 <td>${widget.name}</td>
                 <td>${objectName}</td>
-                <td>${height}px</td>
+                <td>${width} × ${height}px</td>
                 <td>${statusHtml}</td>
                 <td>
                     <a class="btn btn-default btn-xs widget-action" data-action="edit" data-widget-id="${widget.id}" title="Modifier">
@@ -1235,6 +1250,7 @@ $(async function () {
                 $('#edit_widget_name').val(widget.name);
                 $('#edit_parent_object').val(widget.object_id || '');
                 $('#edit_height').val(widget.configuration.height || 300);
+                $('#edit_width').val(widget.configuration.width || 'auto');
                 $('#edit_is_enable').prop('checked', widget.isEnable == '1');
                 $('#edit_is_visible').prop('checked', widget.isVisible == '1');
                 
@@ -1253,7 +1269,8 @@ $(async function () {
             isEnable: $('#edit_is_enable').is(':checked') ? 1 : 0,
             isVisible: $('#edit_is_visible').is(':checked') ? 1 : 0,
             configuration: {
-                height: parseInt($('#edit_height').val())
+                height: parseInt($('#edit_height').val()),
+                width: $('#edit_width').val()
             }
         };
         
@@ -1304,7 +1321,7 @@ $(async function () {
             'Aucun';
         $row.find('td:eq(1)').text(objectName); // Object parent
         
-        $row.find('td:eq(2)').text(formData.configuration.height + 'px'); // Height
+        $row.find('td:eq(2)').text(formData.configuration.width + ' × ' + formData.configuration.height + 'px'); // Dimensions
         
         // Update status
         const $statusCell = $row.find('td:eq(3)');
