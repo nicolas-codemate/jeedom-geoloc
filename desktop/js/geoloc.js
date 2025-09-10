@@ -1115,38 +1115,45 @@ $(async function () {
     };
 
     const createWidgetEquipment = function(name, objectId, height) {
+        // Prepare the equipment data
+        const eqLogicData = {
+            name: name,
+            logicalId: 'widget_' + Date.now(),
+            object_id: parseInt(objectId) || null,
+            eqType_name: 'geoloc',
+            isEnable: 1,
+            isVisible: 1,
+            configuration: {
+                height: parseInt(height) || 300
+            }
+        };
+        
+        console.log('Creating widget with data:', eqLogicData);
+        
         $.ajax({
             type: "POST",
             url: "core/ajax/eqLogic.ajax.php",
             data: {
                 action: "save",
-                eqLogic: JSON.stringify({
-                    id: '',
-                    name: name,
-                    logicalId: 'widget_' + Date.now(),
-                    object_id: objectId,
-                    eqType_name: 'geoloc',
-                    isEnable: 1,
-                    isVisible: 1,
-                    configuration: {
-                        height: height
-                    }
-                })
+                eqLogic: JSON.stringify(eqLogicData)
             },
             dataType: 'json',
             error: function (request, status, error) {
+                console.error('AJAX Error:', request.responseText);
                 handleError(request, 'Erreur lors de la création du widget');
             },
             success: function (data) {
+                console.log('Response:', data);
                 if (data.state !== 'ok') {
+                    console.error('Server Error:', data.result);
                     $.fn.showAlert({message: data.result, level: 'error'});
                     return;
                 }
 
                 $.fn.showAlert({message: 'Widget créé avec succès !', level: 'success'});
                 
-                // Rediriger vers la page de configuration de l'équipement créé
-                loadPage('index.php?v=d&p=geoloc&m=geoloc&id=' + data.result.id);
+                // Refresh the page to show the new widget in the list
+                location.reload();
             }
         });
     };
