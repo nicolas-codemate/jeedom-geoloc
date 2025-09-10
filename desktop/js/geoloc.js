@@ -1209,6 +1209,8 @@ $(async function () {
                 height: parseInt($('#edit_height').val())
             }
         };
+        
+        console.log('Saving widget with data:', formData);
 
         $.ajax({
             type: 'POST',

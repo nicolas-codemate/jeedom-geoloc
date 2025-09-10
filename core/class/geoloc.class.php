@@ -209,7 +209,10 @@ class geoloc extends eqLogic
         $replace['#hide_name#'] = '';
         $replace['#object_id#'] = $object->getId();
         $replace['#object_name#'] = $object->getName();
-        $replace['#height#'] = $this->getConfiguration('height', 300);
+        $height = $this->getConfiguration('height', 300);
+        // Debug: log the height value
+        self::logger('debug', 'Widget ' . $this->getName() . ' height: ' . $height);
+        $replace['#height#'] = $height;
 
         $template = getTemplate('core', $version, 'geolocation.template', __CLASS__);
         return template_replace($replace, $template);
