@@ -1115,8 +1115,8 @@ $(async function () {
     };
 
     const createWidgetEquipment = function(name, objectId, height) {
-        // Prepare the equipment data
-        const eqLogicData = {
+        // Prepare the equipment data as an array (Jeedom expects an array of equipment)
+        const eqLogicData = [{
             name: name,
             logicalId: 'widget_' + Date.now(),
             object_id: parseInt(objectId) || null,
@@ -1126,7 +1126,7 @@ $(async function () {
             configuration: {
                 height: parseInt(height) || 300
             }
-        };
+        }];
         
         console.log('Creating widget with data:', eqLogicData);
         
@@ -1135,6 +1135,7 @@ $(async function () {
             url: "core/ajax/eqLogic.ajax.php",
             data: {
                 action: "save",
+                type: "geoloc",  // Required parameter for Jeedom
                 eqLogic: JSON.stringify(eqLogicData)
             },
             dataType: 'json',
