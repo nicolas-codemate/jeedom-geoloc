@@ -112,14 +112,19 @@ function loadEquipments(widget) {
     GeolocCommon.Utils.showLoading(`geolocMap_${widget.id}`);
 
     GeolocCommon.AjaxHelper.loadEquipments(widget.objectId)
-        .then(data => {
-            processEquipments(widget, data);
+        .done(function(response) {
+            if (response.state !== 'ok') {
+                console.error(`Error loading equipments for widget ${widget.id}:`, response.result);
+                GeolocCommon.Utils.showError(`geolocMap_${widget.id}`, response.result || 'Erreur lors du chargement');
+                return;
+            }
+            processEquipments(widget, response.result);
         })
-        .catch(error => {
-            console.error(`Error loading equipments for widget ${widget.id}:`, error);
-            GeolocCommon.Utils.showError(`geolocMap_${widget.id}`, error.message || 'Erreur lors du chargement');
+        .fail(function(xhr, status, error) {
+            console.error(`AJAX error for widget ${widget.id}:`, error);
+            GeolocCommon.Utils.showError(`geolocMap_${widget.id}`, 'Erreur de communication avec le serveur');
         })
-        .finally(() => {
+        .always(function() {
             widget.isLoading = false;
             GeolocCommon.Utils.hideLoading(`geolocMap_${widget.id}`);
         });

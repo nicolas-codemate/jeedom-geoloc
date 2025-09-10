@@ -264,16 +264,10 @@ GeolocCommon.AjaxHelper = {
     /**
      * Load equipment for specific parent object
      * @param {string|number} parentObjectId - Parent object ID
-     * @returns {Promise} Promise resolving to equipment data
+     * @returns {jqXHR} jQuery AJAX promise
      */
     loadEquipments: function(parentObjectId) {
-        return this.request('getEquipments', { parentObjectId: parentObjectId })
-            .then(response => {
-                if (response.state !== 'ok') {
-                    throw new Error(response.result || 'Erreur lors du chargement');
-                }
-                return response.result;
-            });
+        return this.request('getEquipments', { parentObjectId: parentObjectId });
     }
 };
 
