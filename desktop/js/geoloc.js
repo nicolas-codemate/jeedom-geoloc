@@ -1151,6 +1151,141 @@ $(async function () {
         });
     };
 
+    const initEditWidgetModal = function (widgetId) {
+        // Fetch widget data via AJAX
+        $.ajax({
+            type: 'POST',
+            url: 'core/ajax/eqLogic.ajax.php',
+            data: {
+                action: 'byId',
+                id: widgetId,
+            },
+            dataType: 'json',
+            error: function (request, status, error) {
+                handleAjaxError(request, status, error);
+            },
+            success: function (data) {
+                if (data.state !== 'ok') {
+                    $.fn.showAlert({
+                        message: data.result,
+                        level: 'danger'
+                    });
+                    return;
+                }
+                
+                const widget = data.result;
+                
+                // Populate modal with widget data
+                $('#edit_widget_id').val(widget.id);
+                $('#edit_widget_name').val(widget.name);
+                $('#edit_parent_object').val(widget.object_id || '');
+                $('#edit_height').val(widget.configuration.height || 300);
+                $('#edit_is_enable').prop('checked', widget.isEnable == '1');
+                $('#edit_is_visible').prop('checked', widget.isVisible == '1');
+                
+                // Show modal
+                $('#editWidgetModal').modal('show');
+            }
+        });
+    };
+
+    const saveWidgetChanges = function () {
+        const widgetId = $('#edit_widget_id').val();
+        const formData = {
+            id: widgetId,
+            name: $('#edit_widget_name').val(),
+            object_id: $('#edit_parent_object').val(),
+            isEnable: $('#edit_is_enable').is(':checked') ? 1 : 0,
+            isVisible: $('#edit_is_visible').is(':checked') ? 1 : 0,
+            configuration: {
+                height: parseInt($('#edit_height').val())
+            }
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: 'core/ajax/eqLogic.ajax.php',
+            data: {
+                action: 'save',
+                eqLogic: JSON.stringify(formData)
+            },
+            dataType: 'json',
+            error: function (request, status, error) {
+                handleAjaxError(request, status, error);
+            },
+            success: function (data) {
+                if (data.state !== 'ok') {
+                    $.fn.showAlert({
+                        message: data.result,
+                        level: 'danger'
+                    });
+                    return;
+                }
+                
+                $('#editWidgetModal').modal('hide');
+                $.fn.showAlert({
+                    message: 'Widget modifié avec succès',
+                    level: 'success'
+                });
+                
+                // Refresh the page to show updated widget info
+                location.reload();
+            }
+        });
+    };
+
+    const removeWidget = function (widgetId, widgetName) {
+        bootbox.confirm({
+            title: 'Confirmation',
+            message: `Êtes-vous sûr de vouloir supprimer le widget "${widgetName}" ? Cette action est irréversible.`,
+            buttons: {
+                confirm: {
+                    label: 'Oui, supprimer',
+                    className: 'btn-danger'
+                },
+                cancel: {
+                    label: 'Annuler',
+                    className: 'btn-default'
+                }
+            },
+            callback: function (result) {
+                if (result) {
+                    $.ajax({
+                        type: 'POST',
+                        url: 'core/ajax/eqLogic.ajax.php',
+                        data: {
+                            action: 'remove',
+                            id: widgetId
+                        },
+                        dataType: 'json',
+                        error: function (request, status, error) {
+                            handleAjaxError(request, status, error);
+                        },
+                        success: function (data) {
+                            if (data.state !== 'ok') {
+                                $.fn.showAlert({
+                                    message: data.result,
+                                    level: 'danger'
+                                });
+                                return;
+                            }
+                            
+                            $.fn.showAlert({
+                                message: 'Widget supprimé avec succès',
+                                level: 'success'
+                            });
+                            
+                            // Remove the row from table
+                            $(`tr[data-widget-id="${widgetId}"]`).fadeOut(300, function() {
+                                $(this).remove();
+                            });
+                        }
+                    });
+                }
+            }
+        });
+    };
+
     const initPage = async function () {
         const mainMap = buildMap('map');
         displayableObjects = new DisplayableObjects(mainMap);
@@ -1178,6 +1313,23 @@ $(async function () {
 
         $('.eqLogicAction[data-action=addWidget]').off('click').on('click', function () {
             initAddWidgetModal();
+        });
+
+        // Widget management actions
+        $('.widget-action[data-action=edit]').off('click').on('click', function () {
+            const widgetId = $(this).data('widget-id');
+            initEditWidgetModal(widgetId);
+        });
+
+        $('.widget-action[data-action=remove]').off('click').on('click', function () {
+            const widgetId = $(this).data('widget-id');
+            const widgetName = $(this).closest('tr').find('td:first').text();
+            removeWidget(widgetId, widgetName);
+        });
+
+        // Save widget changes button
+        $('#saveWidgetChanges').off('click').on('click', function () {
+            saveWidgetChanges();
         });
     }
 
