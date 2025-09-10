@@ -1,10 +1,17 @@
 // Geolocation Dashboard Widget JavaScript
-// Mode lecture seule pour visualisation dans le dashboard
+// Read-only mode for dashboard visualization
 
 window.geolocWidgetInstances = window.geolocWidgetInstances || {};
 
+/**
+ * Initialize a geolocation widget
+ * Creates and initializes a new geolocation widget for dashboard display
+ * @param {string} widgetId - Unique identifier for the widget instance
+ * @param {string} objectId - ID of the parent object to display equipment from
+ * @param {string} objectName - Human-readable name of the parent object
+ */
 function initGeolocWidget(widgetId, objectId, objectName) {
-    // Éviter les initialisations multiples
+    // Avoid multiple initializations
     if (window.geolocWidgetInstances[widgetId]) {
         return;
     }
@@ -23,7 +30,7 @@ function initGeolocWidget(widgetId, objectId, objectName) {
 
     window.geolocWidgetInstances[widgetId] = widget;
 
-    // Attendre que Leaflet et GeolocCommon soient disponibles
+    // Wait for Leaflet and GeolocCommon to be available
     if (typeof L === 'undefined' || typeof GeolocCommon === 'undefined') {
         loadDependencies().then(() => initializeWidget(widget));
     } else {
@@ -31,10 +38,20 @@ function initGeolocWidget(widgetId, objectId, objectName) {
     }
 }
 
+/**
+ * Load required dependencies
+ * Ensures both Leaflet and GeolocCommon libraries are loaded before widget initialization
+ * @returns {Promise} Promise that resolves when all dependencies are loaded
+ */
 function loadDependencies() {
     return Promise.all([loadLeaflet(), loadGeolocCommon()]);
 }
 
+/**
+ * Load Leaflet library
+ * Dynamically loads the Leaflet CSS and JavaScript files if not already present
+ * @returns {Promise} Promise that resolves when Leaflet is loaded
+ */
 function loadLeaflet() {
     return new Promise((resolve) => {
         if (typeof L !== 'undefined') {
@@ -54,6 +71,11 @@ function loadLeaflet() {
     });
 }
 
+/**
+ * Load GeolocCommon library
+ * Dynamically loads the shared geolocation common library
+ * @returns {Promise} Promise that resolves when GeolocCommon is loaded
+ */
 function loadGeolocCommon() {
     return new Promise((resolve) => {
         if (typeof GeolocCommon !== 'undefined') {
@@ -68,6 +90,11 @@ function loadGeolocCommon() {
     });
 }
 
+/**
+ * Initialize the widget map and setup
+ * Creates the Leaflet map instance and configures the widget for display
+ * @param {Object} widget - Widget instance object containing configuration
+ */
 function initializeWidget(widget) {
     const mapContainer = document.getElementById(`geolocMap_${widget.id}`);
     if (!mapContainer) {
@@ -75,11 +102,11 @@ function initializeWidget(widget) {
         return;
     }
 
-    // Masquer l'overlay de chargement après initialisation
+    // Hide loading overlay after initialization
     GeolocCommon.Utils.hideLoading(`geolocMap_${widget.id}`);
 
     try {
-        // Initialiser la carte Leaflet avec les paramètres communs
+        // Initialize Leaflet map with common parameters
         widget.map = GeolocCommon.MapManager.createMap(`geolocMap_${widget.id}`, {
             center: GeolocCommon.Config.DEFAULT_CENTER,
             zoom: GeolocCommon.Config.DEFAULT_ZOOM,
@@ -87,10 +114,10 @@ function initializeWidget(widget) {
             keyboard: false
         });
 
-        // Charger les équipements
+        // Load equipment
         loadEquipments(widget);
 
-        // Configurer l'actualisation automatique toutes les 60 secondes
+        // Configure automatic refresh every 60 seconds
         widget.refreshInterval = setInterval(() => {
             loadEquipments(widget);
         }, 60000);
@@ -103,6 +130,11 @@ function initializeWidget(widget) {
     }
 }
 
+/**
+ * Load equipment data for the widget
+ * Fetches geolocatable equipment from the server and updates the map display
+ * @param {Object} widget - Widget instance object
+ */
 function loadEquipments(widget) {
     if (widget.isLoading) {
         return;
@@ -130,45 +162,57 @@ function loadEquipments(widget) {
         });
 }
 
+/**
+ * Process and display equipment on the map
+ * Handles equipment data processing and marker creation for the widget
+ * @param {Object} widget - Widget instance object
+ * @param {Object} data - Equipment data received from server
+ */
 function processEquipments(widget, data) {
-    // Nettoyer les marqueurs existants
+    // Clear existing markers
     clearMarkers(widget);
 
-    // Collecter et filtrer les équipements avec coordonnées valides
+    // Collect and filter equipment with valid coordinates
     const allEquipments = GeolocCommon.EquipmentProcessor.collectEquipments(data);
     const validEquipments = GeolocCommon.EquipmentProcessor.filterValidCoordinates(allEquipments);
 
-    // Mettre à jour le compteur
+    // Update equipment counter
     updateEquipmentCount(widget.id, validEquipments.length);
 
     if (validEquipments.length === 0) {
-        // Pas d'équipements géolocalisables - retour à la vue par défaut
+        // No geolocatable equipment - return to default view
         widget.map.setView(GeolocCommon.Config.DEFAULT_CENTER, GeolocCommon.Config.DEFAULT_ZOOM);
         return;
     }
 
-    // Ajouter les marqueurs
+    // Add markers to map
     validEquipments.forEach(equipment => {
         const marker = createMarker(equipment);
         marker.addTo(widget.map);
         widget.markers.push(marker);
     });
 
-    // Ajuster la vue pour inclure tous les marqueurs
+    // Adjust view to include all markers
     const coordinates = GeolocCommon.EquipmentProcessor.extractCoordinates(validEquipments);
     GeolocCommon.MapManager.fitBoundsToCoordinates(widget.map, coordinates);
 }
 
+/**
+ * Create a marker for equipment
+ * Creates a Leaflet marker with popup for displaying equipment on the map
+ * @param {Object} equipment - Equipment object with coordinates and metadata
+ * @returns {L.Marker} Configured Leaflet marker instance
+ */
 function createMarker(equipment) {
     const lat = parseFloat(equipment.latitude);
     const lng = parseFloat(equipment.longitude);
 
-    // Utiliser la factory commune pour créer le marqueur
+    // Use common factory to create the marker
     const marker = GeolocCommon.MarkerFactory.createMarker(lat, lng, {
         color: 'blue'
     });
 
-    // Popup avec informations basiques (mode lecture seule)
+    // Popup with basic information (read-only mode)
     const popupContent = GeolocCommon.MarkerFactory.createPopupContent(equipment, {
         showActions: false
     });
@@ -181,6 +225,11 @@ function createMarker(equipment) {
     return marker;
 }
 
+/**
+ * Clear all markers from the widget map
+ * Removes all markers from the map and clears the markers array
+ * @param {Object} widget - Widget instance object
+ */
 function clearMarkers(widget) {
     widget.markers.forEach(marker => {
         widget.map.removeLayer(marker);
@@ -188,8 +237,14 @@ function clearMarkers(widget) {
     widget.markers = [];
 }
 
-// Utility functions now handled by GeolocCommon.Utils
+// Utility functions are now handled by GeolocCommon.Utils
 
+/**
+ * Update equipment counter display
+ * Updates the equipment count text displayed in the widget
+ * @param {string} widgetId - Widget identifier
+ * @param {number} count - Number of geolocated equipment to display
+ */
 function updateEquipmentCount(widgetId, count) {
     const countElement = document.getElementById(`equipmentCount_${widgetId}`);
     if (countElement) {
@@ -197,7 +252,7 @@ function updateEquipmentCount(widgetId, count) {
     }
 }
 
-// Nettoyage lors de la destruction du widget
+// Cleanup when widget is destroyed
 $(document).on('widget:destroyed', function(event, widgetId) {
     const widget = window.geolocWidgetInstances[widgetId];
     if (widget) {
@@ -211,7 +266,7 @@ $(document).on('widget:destroyed', function(event, widgetId) {
     }
 });
 
-// Gestion du redimensionnement
+// Handle widget resizing
 $(document).on('widget:resized', function(event, widgetId) {
     const widget = window.geolocWidgetInstances[widgetId];
     if (widget && widget.map) {

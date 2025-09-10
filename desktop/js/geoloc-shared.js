@@ -3,11 +3,12 @@
  * Shared functionality between admin interface and dashboard widgets
  */
 
-// Namespace pour éviter les conflits
+// Namespace to avoid conflicts
 window.GeolocCommon = window.GeolocCommon || {};
 
 /**
  * Configuration and Constants
+ * Shared configuration settings and constants for the geolocation plugin
  */
 GeolocCommon.Config = {
     TILE_LAYER_URL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -29,6 +30,7 @@ GeolocCommon.Config = {
 
 /**
  * Map Manager - Handles Leaflet map creation and configuration
+ * Provides utilities for creating and managing Leaflet maps with standardized settings
  */
 GeolocCommon.MapManager = {
     /**
@@ -62,6 +64,7 @@ GeolocCommon.MapManager = {
 
     /**
      * Add OpenStreetMap tile layer to map
+     * Adds the standard OpenStreetMap tile layer with attribution to the map
      * @param {L.Map} map - Leaflet map instance
      */
     addTileLayer: function(map) {
@@ -73,10 +76,11 @@ GeolocCommon.MapManager = {
     },
 
     /**
-     * Fit map bounds to include all markers
+     * Fit map bounds to include all coordinates
+     * Adjusts the map view to show all provided coordinates with optional padding
      * @param {L.Map} map - Leaflet map instance
-     * @param {Array} coordinates - Array of [lat, lng] coordinates
-     * @param {Object} options - Fit bounds options
+     * @param {Array} coordinates - Array of [lat, lng] coordinate pairs
+     * @param {Object} options - Fit bounds options (padding, maxZoom, etc.)
      */
     fitBoundsToCoordinates: function(map, coordinates, options = {}) {
         if (!coordinates || coordinates.length === 0) {
@@ -97,14 +101,16 @@ GeolocCommon.MapManager = {
 
 /**
  * Marker Factory - Creates standardized markers
+ * Factory methods for creating consistent markers and popups across the application
  */
 GeolocCommon.MarkerFactory = {
     /**
      * Create a marker with standard styling
-     * @param {number} lat - Latitude
-     * @param {number} lng - Longitude
-     * @param {Object} options - Marker options
-     * @returns {L.Marker} Leaflet marker
+     * Creates a Leaflet marker with consistent styling and custom icon
+     * @param {number} lat - Latitude coordinate
+     * @param {number} lng - Longitude coordinate
+     * @param {Object} options - Marker options (color, draggable, etc.)
+     * @returns {L.Marker} Configured Leaflet marker instance
      */
     createMarker: function(lat, lng, options = {}) {
         const color = options.color || 'blue';
@@ -121,8 +127,9 @@ GeolocCommon.MarkerFactory = {
 
     /**
      * Create marker icon with specified color
-     * @param {string} color - Marker color
-     * @returns {L.Icon} Leaflet icon
+     * Generates a colored marker icon using the plugin's custom icon set
+     * @param {string} color - Marker color (red, blue, green, etc.)
+     * @returns {L.Icon} Configured Leaflet icon instance
      */
     createIcon: function(color = 'blue') {
         return L.icon({
@@ -137,9 +144,10 @@ GeolocCommon.MarkerFactory = {
 
     /**
      * Create popup content for equipment
-     * @param {Object} equipment - Equipment data
-     * @param {Object} options - Popup options
-     * @returns {string} HTML content for popup
+     * Generates HTML content for equipment popups with optional action buttons
+     * @param {Object} equipment - Equipment data object with coordinates and metadata
+     * @param {Object} options - Popup options (showActions, etc.)
+     * @returns {string} HTML string for popup content
      */
     createPopupContent: function(equipment, options = {}) {
         const showActions = options.showActions || false;
@@ -178,12 +186,14 @@ GeolocCommon.MarkerFactory = {
 
 /**
  * Equipment Processor - Handles equipment data processing
+ * Utilities for processing and filtering equipment data from hierarchical structures
  */
 GeolocCommon.EquipmentProcessor = {
     /**
      * Collect all equipment from hierarchical data structure
-     * @param {Object} data - Hierarchical equipment data
-     * @returns {Array} Flat array of equipment objects
+     * Recursively traverses the hierarchical object tree to extract all equipment items
+     * @param {Object} data - Hierarchical equipment data with nested child objects
+     * @returns {Array} Flattened array of all equipment objects found
      */
     collectEquipments: function(data) {
         const equipments = [];
@@ -207,8 +217,9 @@ GeolocCommon.EquipmentProcessor = {
 
     /**
      * Filter equipment with valid coordinates
-     * @param {Array} equipments - Array of equipment objects
-     * @returns {Array} Filtered equipment with valid coordinates
+     * Removes equipment items that don't have valid latitude/longitude coordinates
+     * @param {Array} equipments - Array of equipment objects to filter
+     * @returns {Array} Filtered array containing only equipment with valid coordinates
      */
     filterValidCoordinates: function(equipments) {
         return equipments.filter(eq => 
@@ -219,17 +230,19 @@ GeolocCommon.EquipmentProcessor = {
 
     /**
      * Extract coordinates from equipment array
-     * @param {Array} equipments - Array of equipment objects
-     * @returns {Array} Array of [lat, lng] coordinates
+     * Converts equipment objects to coordinate pairs for map operations
+     * @param {Array} equipments - Array of equipment objects with latitude/longitude
+     * @returns {Array} Array of [lat, lng] coordinate pairs
      */
     extractCoordinates: function(equipments) {
         return equipments.map(eq => [parseFloat(eq.latitude), parseFloat(eq.longitude)]);
     },
 
     /**
-     * Get next color for marker
-     * @param {number} index - Index for color selection
-     * @returns {string} Color name
+     * Get marker color by index
+     * Returns a color from the predefined color palette using cyclic selection
+     * @param {number} index - Index for color selection (cycles through available colors)
+     * @returns {string} Color name from the predefined palette
      */
     getMarkerColor: function(index) {
         return GeolocCommon.Config.MARKER_COLORS[index % GeolocCommon.Config.MARKER_COLORS.length];
@@ -238,13 +251,15 @@ GeolocCommon.EquipmentProcessor = {
 
 /**
  * AJAX Helper - Handles common AJAX operations
+ * Standardized AJAX requests for geolocation plugin operations
  */
 GeolocCommon.AjaxHelper = {
     /**
      * Make AJAX request to geoloc plugin
-     * @param {string} action - Action to perform
-     * @param {Object} data - Additional data to send
-     * @returns {Promise} jQuery AJAX promise
+     * Sends a standardized AJAX request to the geoloc plugin endpoint
+     * @param {string} action - Action to perform on the server
+     * @param {Object} data - Additional data to send with the request
+     * @returns {jqXHR} jQuery AJAX promise object
      */
     request: function(action, data = {}) {
         const requestData = {
@@ -263,8 +278,9 @@ GeolocCommon.AjaxHelper = {
 
     /**
      * Load equipment for specific parent object
-     * @param {string|number} parentObjectId - Parent object ID
-     * @returns {jqXHR} jQuery AJAX promise
+     * Retrieves all geolocatable equipment belonging to a specific parent object
+     * @param {string|number} parentObjectId - ID of the parent object to query
+     * @returns {jqXHR} jQuery AJAX promise resolving to equipment data
      */
     loadEquipments: function(parentObjectId) {
         return this.request('getEquipments', { parentObjectId: parentObjectId });
@@ -272,12 +288,14 @@ GeolocCommon.AjaxHelper = {
 };
 
 /**
- * Utility functions
+ * Utility Functions
+ * General purpose utility functions for UI operations and data manipulation
  */
 GeolocCommon.Utils = {
     /**
      * Show loading overlay on element
-     * @param {string} elementId - Element ID
+     * Displays a loading spinner overlay on the specified DOM element
+     * @param {string} elementId - ID of the DOM element to show loading on
      */
     showLoading: function(elementId) {
         const element = document.getElementById(elementId);
@@ -291,7 +309,8 @@ GeolocCommon.Utils = {
 
     /**
      * Hide loading overlay on element
-     * @param {string} elementId - Element ID
+     * Hides the loading spinner overlay on the specified DOM element
+     * @param {string} elementId - ID of the DOM element to hide loading from
      */
     hideLoading: function(elementId) {
         const element = document.getElementById(elementId);
@@ -305,8 +324,9 @@ GeolocCommon.Utils = {
 
     /**
      * Show error message in container
-     * @param {string} containerId - Container element ID
-     * @param {string} message - Error message
+     * Displays an error message with icon in the specified container
+     * @param {string} containerId - ID of the container element
+     * @param {string} message - Error message text to display
      */
     showError: function(containerId, message) {
         const container = document.getElementById(containerId);
@@ -322,9 +342,10 @@ GeolocCommon.Utils = {
 
     /**
      * Debounce function calls
+     * Creates a debounced version of a function to limit rapid successive calls
      * @param {Function} func - Function to debounce
-     * @param {number} wait - Wait time in milliseconds
-     * @returns {Function} Debounced function
+     * @param {number} wait - Wait time in milliseconds before execution
+     * @returns {Function} Debounced function that delays execution
      */
     debounce: function(func, wait) {
         let timeout;

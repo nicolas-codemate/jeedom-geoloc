@@ -248,8 +248,8 @@ sendVarToJS('eqType', $plugin->getId());
     include_file('desktop', 'custom', 'css', 'geoloc');
     include_file('desktop', 'leaflet', 'js', 'geoloc');
     include_file('desktop', 'leaflet-ant-path', 'js', 'geoloc');
-    include_file('desktop', 'geoloc-common', 'js', 'geoloc');
-    include_file('desktop', 'geoloc', 'js', 'geoloc');
+    include_file('desktop', 'geoloc-shared', 'js', 'geoloc');
+    include_file('desktop', 'geoloc-admin', 'js', 'geoloc');
 
     // Inclusion du fichier javascript du core - NE PAS MODIFIER NI SUPPRIMER -->
     include_file('core', 'plugin.template', 'js');
