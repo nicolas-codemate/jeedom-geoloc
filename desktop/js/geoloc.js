@@ -1128,7 +1128,6 @@ $(async function () {
             }
         }];
         
-        console.log('Creating widget with data:', eqLogicData);
         
         $.ajax({
             type: "POST",
@@ -1140,13 +1139,10 @@ $(async function () {
             },
             dataType: 'json',
             error: function (request, status, error) {
-                console.error('AJAX Error:', request.responseText);
                 handleError(request, 'Erreur lors de la création du widget');
             },
             success: function (data) {
-                console.log('Response:', data);
                 if (data.state !== 'ok') {
-                    console.error('Server Error:', data.result);
                     $.fn.showAlert({message: data.result, level: 'error'});
                     return;
                 }
@@ -1261,7 +1257,6 @@ $(async function () {
             }
         };
         
-        console.log('Saving widget with data:', formData);
 
         $.ajax({
             type: 'POST',
