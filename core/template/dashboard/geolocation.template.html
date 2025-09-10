@@ -3,7 +3,7 @@
         <span class="widget-name">#object_name# - Géolocalisation</span>
     </div>
     <div class="widget-body">
-        <div id="geolocMap_#id#" class="geolocation-map" style="height: #height|300#px; width: 100%; min-height: 200px;">
+        <div id="geolocMap_#id#" class="geolocation-map" style="height: #height#px; width: 100%; min-height: 200px;" data-height="#height#">
             <div class="loading-overlay">
                 <i class="fa fa-spinner fa-spin"></i>
                 <span>Chargement de la carte...</span>
@@ -19,6 +19,9 @@
 <script src="plugins/geoloc/desktop/js/geolocation.js"></script>
 <script>
 $(document).ready(function() {
+    console.log('Widget #id# height from template: #height#px');
+    console.log('Map element computed height:', $('#geolocMap_#id#').height());
+    
     if (typeof initGeolocWidget === 'function') {
         initGeolocWidget('#id#', '#object_id#', '#object_name#');
     } else {
