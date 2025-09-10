@@ -1176,7 +1176,7 @@ $(async function () {
             initAddGeolocationModal();
         });
 
-        $('.eqLogicAction[data-action=add]').off('click').on('click', function () {
+        $('.eqLogicAction[data-action=addWidget]').off('click').on('click', function () {
             initAddWidgetModal();
         });
     }
