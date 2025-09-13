@@ -961,11 +961,23 @@ $(async function () {
             return localStorage.getItem('geoloc_selected_parent_object');
         },
 
+        /**
+         * Save child objects visibility state to localStorage
+         * Stores the visibility settings for child objects of a specific parent
+         * @param {string} parentObjectId - ID of the parent object
+         * @param {Object} childObjectsVisibility - Object mapping child IDs to visibility states
+         */
         saveChildObjectsVisibility: function(parentObjectId, childObjectsVisibility) {
             const key = `geoloc_child_visibility_${parentObjectId}`;
             localStorage.setItem(key, JSON.stringify(childObjectsVisibility));
         },
 
+        /**
+         * Get child objects visibility state from localStorage
+         * Retrieves the stored visibility settings for child objects
+         * @param {string} parentObjectId - ID of the parent object
+         * @returns {Object|null} Object mapping child IDs to visibility states or null
+         */
         getChildObjectsVisibility: function(parentObjectId) {
             const key = `geoloc_child_visibility_${parentObjectId}`;
             const saved = localStorage.getItem(key);
@@ -978,6 +990,10 @@ $(async function () {
      * Handles creation, editing, and deletion of geolocation dashboard widgets
      */
     GeolocAdmin.Widgets = {
+        /**
+         * Initialize modal for adding a new geolocation widget
+         * Creates a modal form for configuring and creating dashboard widgets
+         */
         initAddWidgetModal: function () {
             let dialog_message = `
 <form name="addWidgetForm">
@@ -1067,6 +1083,10 @@ $(async function () {
             }, 100);
         },
 
+        /**
+         * Populate the object selection dropdown
+         * Fetches all available parent objects via AJAX and populates select options
+         */
         populateObjectSelect: function() {
             // Appel AJAX pour récupérer la liste des objets
             $.ajax({
@@ -1093,6 +1113,12 @@ $(async function () {
             });
         },
 
+        /**
+         * Handle AJAX error responses
+         * Parses error response and displays appropriate error message
+         * @param {Object} request - jQuery AJAX request object
+         * @param {string} defaultMessage - Default error message if parsing fails
+         */
         handleError: function(request, defaultMessage) {
             let message = defaultMessage;
             try {
@@ -1115,6 +1141,14 @@ $(async function () {
             $acceptButton.html('Créer le widget');
         },
 
+        /**
+         * Create a new widget equipment via AJAX
+         * Sends request to create a geolocation widget with specified parameters
+         * @param {string} name - Widget name
+         * @param {string|number} objectId - Parent object ID
+         * @param {number} height - Widget height in pixels
+         * @param {string} width - Widget width (e.g., 'auto', '100%', '300px')
+         */
         createWidgetEquipment: function(name, objectId, height, width) {
             // Prepare the equipment data as an array (Jeedom expects an array of equipment)
             const eqLogicData = [{
@@ -1157,6 +1191,11 @@ $(async function () {
             });
         },
 
+        /**
+         * Add a new widget to the widgets table
+         * Updates the DOM to display the newly created widget
+         * @param {Object} widget - Widget data object from server response
+         */
         addWidgetToTable: function(widget) {
             // Get object name for display
             const objectName = widget.object_id ? 
@@ -1209,6 +1248,11 @@ $(async function () {
             });
         },
 
+        /**
+         * Initialize modal for editing an existing widget
+         * Fetches widget data and populates edit form modal
+         * @param {string|number} widgetId - ID of the widget to edit
+         */
         initEditWidgetModal: function (widgetId) {
             // Fetch widget data via AJAX
             $.ajax({
@@ -1248,6 +1292,10 @@ $(async function () {
             });
         },
 
+        /**
+         * Save changes to an existing widget
+         * Collects form data and sends update request via AJAX
+         */
         saveWidgetChanges: function () {
             const widgetId = $('#edit_widget_id').val();
             const formData = {
@@ -1296,6 +1344,12 @@ $(async function () {
             });
         },
 
+        /**
+         * Update a widget row in the widgets table
+         * Updates table row data without full page refresh
+         * @param {string|number} widgetId - ID of the widget to update
+         * @param {Object} formData - Updated widget data
+         */
         updateWidgetTableRow: function(widgetId, formData) {
             const $row = $(`tr[data-widget-id="${widgetId}"]`);
             if ($row.length === 0) return;
@@ -1323,6 +1377,12 @@ $(async function () {
             }
         },
 
+        /**
+         * Remove a widget with confirmation dialog
+         * Shows confirmation modal and deletes widget on confirmation
+         * @param {string|number} widgetId - ID of the widget to remove
+         * @param {string} widgetName - Name of the widget for confirmation message
+         */
         removeWidget: function (widgetId, widgetName) {
             bootbox.confirm({
                 title: 'Confirmation',
@@ -1402,6 +1462,11 @@ $(async function () {
 `;
         },
 
+        /**
+         * Build the equipment container with objects hierarchy
+         * Creates the UI container showing equipment objects in a hierarchical structure
+         * @param {Object} data - Equipment data object containing nested objects and items
+         */
         buildEqLogicContainer: function (data) {
             displayableObjects.reset();
             const container = $('#eqLogicThumbnailContainer');
@@ -1484,6 +1549,10 @@ $(async function () {
             }
         },
 
+        /**
+         * Bind visibility toggle events for equipment objects
+         * Sets up event handlers for showing/hiding objects on the map
+         */
         bindToggleVisibility: function () {
             $('.eqLogicVisible').on('change', function () {
                 const objectId = $(this).data('object-id');
@@ -1516,6 +1585,13 @@ $(async function () {
      * General purpose utility functions for error handling and common operations
      */
     GeolocAdmin.Utils = {
+        /**
+         * Handle AJAX errors with consistent error display
+         * Logs error to console and shows user-friendly error message
+         * @param {Object} request - jQuery AJAX request object
+         * @param {string} status - HTTP status text
+         * @param {string} error - Error message
+         */
         handleAjaxError: function(request, status, error) {
             console.error('AJAX Error:', status, error);
             $.fn.showAlert({
@@ -1638,11 +1714,6 @@ $(async function () {
         }
     };
 
-    // Backwards compatibility
-    const mapActionCallback = GeolocAdmin.MapActions.callback;
 
     await GeolocAdmin.Init.initPage();
 });
-
-// Log successful loading
-console.log('GeolocAdmin library loaded successfully');

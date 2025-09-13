@@ -16,8 +16,6 @@ function initGeolocWidget(widgetId, objectId, objectName) {
         return;
     }
 
-    console.log(`Initializing geolocation widget ${widgetId} for object ${objectId}`);
-
     const widget = {
         id: widgetId,
         objectId: objectId,
@@ -121,8 +119,6 @@ function initializeWidget(widget) {
         widget.refreshInterval = setInterval(() => {
             loadEquipments(widget);
         }, 60000);
-
-        console.log(`Widget ${widget.id} initialized successfully`);
 
     } catch (error) {
         console.error(`Error initializing widget ${widget.id}:`, error);

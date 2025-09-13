@@ -359,6 +359,3 @@ GeolocCommon.Utils = {
         };
     }
 };
-
-// Log successful loading
-console.log('GeolocCommon library loaded successfully');
