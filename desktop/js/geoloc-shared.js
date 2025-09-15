@@ -151,15 +151,10 @@ GeolocCommon.MarkerFactory = {
      */
     createPopupContent: function(equipment, options = {}) {
         const showActions = options.showActions || false;
-        const lat = parseFloat(equipment.latitude);
-        const lng = parseFloat(equipment.longitude);
         
         let content = `
             <div class="geoloc-popup">
-                <h4>${equipment.humanName || equipment.name}</h4>
-                <p><strong>Position:</strong><br>
-                Latitude: ${lat.toFixed(6)}<br>
-                Longitude: ${lng.toFixed(6)}</p>
+                <h4>${equipment.name}</h4>
         `;
 
         if (equipment.parents) {

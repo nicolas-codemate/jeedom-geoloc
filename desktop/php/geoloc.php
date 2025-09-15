@@ -83,7 +83,7 @@ sendVarToJS('eqType', $plugin->getId());
             </div>
 
             <div class="col-lg-8">
-                <div id="map" style="height: 800px;"></div>
+                <div id="map"></div>
             </div>
         </div>
     </div>
