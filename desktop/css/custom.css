@@ -86,6 +86,25 @@ body > div.bootbox.modal.fade.in > div.modal-xl {
     margin-bottom: 20px;
 }
 
+/* Fix height issues with tabs */
+.tab-content {
+    height: calc(100vh - 200px);
+    overflow: auto;
+}
+
+#geolocation .row {
+    height: 100%;
+}
+
+#geolocation .col-lg-8 {
+    height: 100%;
+}
+
+#map {
+    height: calc(100vh - 250px) !important;
+    min-height: 600px;
+}
+
 /* Leaflet popup customization */
 .light .leaflet-popup-content-wrapper {
     background: white;
@@ -107,4 +126,146 @@ body > div.bootbox.modal.fade.in > div.modal-xl {
 
 .leaflet-popup-content {
     font-size: 14px;
+}
+
+/* Geoloc Equipment Card Styles - Exact copy of Jeedom's eqLogicDisplayCard styles */
+.geoloc-equipment-card {
+    border: none !important;
+    background: transparent !important;
+    padding-top: 0!important;
+    text-align: center;
+    flex: 0 0 auto;
+}
+
+.geoloc-equipment-card div.cursor {
+    margin-bottom: 5px !important;
+    padding: 5px !important;
+}
+
+.geoloc-equipment-card {
+    height: 130px !important;
+    overflow: hidden;
+}
+
+div.eqLogicThumbnailContainer .geoloc-equipment-card {
+    height: 168px !important;
+}
+
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor {
+    min-width: 130px !important;
+    max-width: auto !important;
+    width: auto;
+    margin-bottom: 10px !important;
+    height: 168px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+}
+
+div.eqLogicThumbnailContainer div.geoloc-equipment-card img {
+    height: 100px !important;
+    width: unset !important;
+    padding-top: 15px;
+}
+
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor {
+    width: 130px;
+    font-size: 14px !important;
+    position: relative;
+}
+
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor > center > img,
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor img {
+    width: 75px !important;
+    height: auto !important;
+    padding-top: 15px;
+}
+
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor > center > i,
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor > .center > i,
+div.eqLogicThumbnailContainer div.geoloc-equipment-card.cursor > i {
+    margin-bottom: 20px;
+}
+
+.geoloc-equipment-card.cursor {
+    margin-left: 0 !important;
+    text-align: center;
+    min-height: 123px !important;
+}
+
+/* DisplayAsTable mode */
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable {
+    position: relative !important;
+    top: 2px !important;
+    left: 0 !important;
+    min-width: 100% !important;
+    text-align: left;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    transform: unset !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    display: block;
+}
+
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable > img {
+    min-height: 24px !important;
+    height: 24px !important;
+    width: auto !important;
+    padding-top: 1px;
+    position: absolute;
+    left: 15px;
+}
+
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable > .name {
+    position: absolute;
+    left: 50px;
+    top: 0;
+    line-height: 24px !important;
+    font-size: 14px !important;
+    width: calc(100% - 150px);
+    display: flex;
+    align-items: center;
+}
+
+/* Label d'objet parent */
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable > .name .label {
+    line-height: 14px !important;
+    margin-right: 10px !important;
+    padding: 2px 8px;
+    font-size: 11px !important;
+    border-radius: 3px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Nom de l'équipement */
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable > .name strong {
+    font-size: 14px !important;
+    font-weight: 500;
+    line-height: 24px !important;
+    margin: 0;
+    display: inline-block;
+}
+
+/* Séparateur br caché en mode table */
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable > .name br {
+    display: none;
+}
+
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable > .displayTableRight {
+    position: absolute;
+    right: 15px;
+    top: 0;
+    height: 24px;
+    line-height: 24px;
+}
+
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable:first-child {
+    margin-top: 8px !important;
+}
+
+div.eqLogicThumbnailContainer .geoloc-equipment-card.cursor.displayAsTable:last-child {
+    margin-bottom: 13px !important;
 }

@@ -1452,7 +1452,7 @@ $(async function () {
             jeeObject.displayPopup = true; // by default, we display the object
             displayableObjects.addObject(jeeObject);
             return `
-<div class="eqLogicDisplayCard cursor displayAsTable" data-object="${jeeObject.id}">
+<div class="geoloc-equipment-card cursor displayAsTable" data-object="${jeeObject.id}">
     <img alt="objectIcon" class="lazy" src="plugins/jMQTT/core/img/node_${jeeObject.icon}.svg">
     <span class="name">${jeeObject.humanName}</span>
     <span class="hiddenAsCard input-group displayTableRight" style="font-size:12px">
@@ -1520,7 +1520,7 @@ $(async function () {
                 });
             }
 
-            $('.eqLogicDisplayCard')
+            $('.geoloc-equipment-card')
                 .on('mouseenter', function () {
                     const objectId = $(this).data('object');
                     displayableObjects.openPopup(displayableObjects.objects[objectId]);
@@ -1531,7 +1531,7 @@ $(async function () {
 
                 });
 
-            $('.eqLogicDisplayCard > span.name').on('click', function () {
+            $('.geoloc-equipment-card > span.name').on('click', function () {
                 const objectId = $(this).parent().data('object');
                 const checkbox = $(`input.eqLogicVisible[data-object-id="${objectId}"]`);
                 checkbox.prop('checked', !checkbox.prop('checked'));
@@ -1540,12 +1540,34 @@ $(async function () {
 
 
             GeolocAdmin.UI.bindToggleVisibility();
+            
+            // Support for Jeedom's table/grid display toggle
+            GeolocAdmin.UI.handleDisplayMode();
+            
+            // Support for Jeedom's table/grid display toggle
+            GeolocAdmin.UI.handleDisplayMode();
 
             displayableObjects.centerMap();
 
             if (0 === items.length) {
                 displayableObjects.reset();
                 container.append('<div style="margin-top:20px;margin-left:20px"><span class="label label-warning"">Aucun équipement géolocalisable trouvé</span></div>');
+            }
+        },
+
+        /**
+         * Handle display mode (table/grid) compatibility with Jeedom
+         * Ensures our custom cards work with Jeedom's display toggle
+         */
+        handleDisplayMode: function () {
+            // Check if table mode is active
+            const isTableMode = (typeof getCookie !== 'undefined' && getCookie('jeedom_displayAsTable') == 'true') || 
+                               (window.jeedom && window.jeedom.theme && window.jeedom.theme.theme_displayAsTable == 1);
+            
+            if (isTableMode) {
+                $('.geoloc-equipment-card').addClass('displayAsTable');
+                $('.geoloc-equipment-card .hiddenAsCard').removeClass('hidden');
+                $('#eqLogicThumbnailContainer').addClass('containerAsTable');
             }
         },
 

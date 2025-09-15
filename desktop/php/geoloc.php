@@ -46,7 +46,7 @@ sendVarToJS('eqType', $plugin->getId());
     
     <!-- Onglet Géolocalisation -->
     <div class="tab-pane fade in active" id="geolocation" role="tabpanel">
-        <div class="row row-overflow">
+        <div class="row">
             <div class="col-xs-12 eqLogicThumbnailDisplay">
                 <div class="row">
                     <legend><i class="fas fa-cog"></i> {{Gestion}}</legend>
@@ -239,12 +239,10 @@ sendVarToJS('eqType', $plugin->getId());
         </div>
     </div>
 
-    </div><!-- /.row row-overflow -->
 
     <!-- Inclusion du fichier javascript du plugin (dossier, nom_du_fichier, extension_du_fichier, id_du_plugin) -->
     <?php
     include_file('desktop', 'leaflet', 'css', 'geoloc');
-    include_file('desktop', 'custom-leaflet', 'css', 'geoloc');
     include_file('desktop', 'custom', 'css', 'geoloc');
     include_file('desktop', 'leaflet', 'js', 'geoloc');
     include_file('desktop', 'leaflet-ant-path', 'js', 'geoloc');
