@@ -38,11 +38,11 @@ function initGeolocWidget(widgetId, objectId, objectName) {
 
 /**
  * Load required dependencies
- * Ensures both Leaflet and GeolocCommon libraries are loaded before widget initialization
+ * Ensures Leaflet, GeolocCommon and optional plugins are loaded before widget initialization
  * @returns {Promise} Promise that resolves when all dependencies are loaded
  */
 function loadDependencies() {
-    return Promise.all([loadLeaflet(), loadGeolocCommon()]);
+    return Promise.all([loadLeaflet(), loadGeolocCommon(), loadLeafletAntPath()]);
 }
 
 /**
@@ -82,8 +82,31 @@ function loadGeolocCommon() {
         }
 
         const script = document.createElement('script');
-        script.src = 'plugins/geoloc/desktop/js/geoloc-common.js';
+        script.src = 'plugins/geoloc/desktop/js/geoloc-shared.js';
         script.onload = resolve;
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * Load Leaflet Ant Path plugin
+ * Dynamically loads the ant path plugin for animated paths
+ * @returns {Promise} Promise that resolves when plugin is loaded
+ */
+function loadLeafletAntPath() {
+    return new Promise((resolve) => {
+        if (typeof L !== 'undefined' && typeof L.polyline !== 'undefined' && typeof L.polyline.antPath === 'function') {
+            resolve();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'plugins/geoloc/desktop/js/leaflet-ant-path.js';
+        script.onload = resolve;
+        script.onerror = () => {
+            console.warn('Leaflet Ant Path plugin not found, will use standard polylines');
+            resolve(); // Continue even if plugin is not available
+        };
         document.head.appendChild(script);
     });
 }
@@ -208,14 +231,24 @@ function createMarker(equipment) {
         color: 'blue'
     });
 
-    // Popup with basic information (read-only mode)
+    // Popup with history action for widgets (no update position)
     const popupContent = GeolocCommon.MarkerFactory.createPopupContent(equipment, {
-        showActions: false
+        showActions: true,
+        showUpdateAction: false
     });
 
     marker.bindPopup(popupContent, {
         className: 'geoloc-widget-popup',
         maxWidth: 250
+    });
+
+    // Add event handler for popup actions
+    marker.on('popupopen', function () {
+        $('.map-action').off('click').on('click', function () {
+            const action = $(this).data('action');
+            const eqLogicId = $(this).data('eqlogicId');
+            handleMapAction(action, eqLogicId);
+        });
     });
 
     return marker;
@@ -232,6 +265,42 @@ function clearMarkers(widget) {
     });
     widget.markers = [];
 }
+
+/**
+ * Handle map popup actions in widget context
+ * Processes actions triggered from map popups, specifically history viewing
+ * @param {string} action - Action to perform (getHistory, updatePosition)
+ * @param {string} eqLogicId - Equipment ID to perform action on
+ */
+function handleMapAction(action, eqLogicId) {
+    switch (action) {
+        case "getHistory":
+            showEquipmentHistory(eqLogicId);
+            break;
+        case "updatePosition":
+            // Not supported in widget mode - redirect to admin page
+            $.fn.showAlert({
+                message: 'Pour modifier la position, veuillez utiliser la page d\'administration du plugin',
+                level: 'warning'
+            });
+            break;
+        default:
+            console.error('Unknown action:', action);
+    }
+}
+
+/**
+ * Show equipment history in modal
+ * Opens a modal dialog displaying the position history for the specified equipment
+ * @param {string} eqLogicId - Equipment ID to show history for
+ */
+function showEquipmentHistory(eqLogicId) {
+    // Use the shared history modal from GeolocCommon
+    GeolocCommon.HistoryModal.show(eqLogicId, {
+        context: 'widget'
+    });
+}
+
 
 // Utility functions are now handled by GeolocCommon.Utils
 
