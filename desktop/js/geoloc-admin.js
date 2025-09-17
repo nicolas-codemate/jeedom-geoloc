@@ -755,7 +755,7 @@ $(async function () {
     </div>
     <div class="row">
         <div class="form-group col-md-12" style="margin-bottom: 20px">
-            <label for="parentObject" class="control-label">Objet parent (dont afficher les équipements)</label>
+            <label for="parentObject" class="control-label">Objet parent</label>
             <select class="form-control" id="parentObject" name="parentObject" required>
                 <option value="">Sélectionner un objet</option>
             </select>
