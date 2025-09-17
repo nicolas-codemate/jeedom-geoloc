@@ -302,8 +302,6 @@ function showEquipmentHistory(eqLogicId) {
 }
 
 
-// Utility functions are now handled by GeolocCommon.Utils
-
 /**
  * Update equipment counter display
  * Updates the equipment count text displayed in the widget
