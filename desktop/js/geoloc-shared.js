@@ -381,9 +381,9 @@ GeolocCommon.HistoryModal = {
             return;
         }
 
-        // Default date range (last year)
+        // Default date range (last week)
         const startDate = new Date();
-        startDate.setFullYear(startDate.getFullYear() - 1);
+        startDate.setDate(startDate.getDate() - 7);
         const endDate = new Date();
         
         const startDateString = startDate.toLocaleDateString('fr-FR', {

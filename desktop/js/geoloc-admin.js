@@ -608,11 +608,8 @@ $(async function () {
             };
 
             const onHideCallback = async function () {
-                if (!equipment) {
-                    // no equipement, we need to refresh the list to newly position of our equipment
-                    await GeolocAdmin.Equipment.loadEquipmentsList();
-                }
-                // if equipment is provided, we don't need to refresh the list since we are updating the position
+                // Always refresh the equipment list to show updated positions on the map
+                await GeolocAdmin.Equipment.loadEquipmentsList();
             };
 
             const bindAddGeolocationModal = async function () {
