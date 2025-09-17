@@ -17,9 +17,6 @@ Dans la partie configuration du plugin, vous pouvez définir les paramètres sui
 
 Ces paramètres sont utilisés pour centrer la carte si aucun équipement n'est géolocalisé.
 
-### Permissions requises
-- **Accès administrateur** requis pour la configuration et gestion des widgets
-- **Lecture** pour l'affichage des widgets sur le dashboard
 
 ## Utilisation
 Le plugin va rechercher dans l'ensemble des équipements configurés les commandes de type `info` et de type `numeric` et dont le nom est exactement `latitude` et `longitude`. Si ces commandes sont présentes, l'équipement sera affiché sur la carte.
@@ -55,8 +52,8 @@ Le plugin propose un système complet de widgets personnalisables pour afficher 
 
 L'interface du plugin est organisée en **deux onglets** :
 
-- **📍 Géolocalisation** : Carte interactive principale avec gestion des équipements
-- **🏷️ Widgets de carte** : Gestion dédiée des widgets de dashboard
+- **Géolocalisation** : Carte interactive principale avec gestion des équipements
+- **Widgets de carte** : Gestion dédiée des widgets de dashboard
 
 ### Créer un widget de carte
 
@@ -77,15 +74,15 @@ Dans l'onglet **"Widgets de carte"**, vous disposez d'un tableau de gestion comp
 
 | Fonctionnalité | Description |
 |----------------|-------------|
-| **✏️ Modifier** | Éditer toutes les propriétés du widget |
-| **🗑️ Supprimer** | Supprimer le widget avec confirmation |
-| **👁️ État** | Visualiser l'état (Actif/Masqué/Inactif) |
+| **Modifier** | Éditer toutes les propriétés du widget |
+| **Supprimer** | Supprimer le widget avec confirmation |
+| **État** | Visualiser l'état (Actif/Masqué/Inactif) |
 
 ### Fonctionnalités des widgets
 
 Les widgets affichent automatiquement :
 - **Carte interactive** avec contrôles de zoom
-- **Marqueurs colorés** pour chaque équipement géolocalisé
+- **Marqueurs** pour chaque équipement géolocalisé
 - **Popups informatifs** au clic sur les marqueurs
 - **Actualisation automatique** toutes les 60 secondes
 - **Compteur d'équipements** affiché en bas du widget
@@ -98,13 +95,6 @@ Les widgets affichent automatiquement :
 3. Chaque widget affiche les équipements de l'objet parent configuré
 4. La taille s'adapte selon les paramètres définis (hauteur/largeur)
 
-### Avantages des widgets
-
-- **🎯 Ciblage précis** : Un widget par zone/objet de votre domicile
-- **📱 Responsive** : S'adapte aux écrans mobiles et desktop
-- **⚡ Performance** : Chargement optimisé et actualisation intelligente
-- **🎨 Personnalisable** : Taille et affichage adaptables à vos besoins
-- **🔄 Temps réel** : Mise à jour automatique des positions
 
 ### Créer un équipement géolocalisable
 
