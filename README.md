@@ -2,12 +2,21 @@
 
 Ce plugin permet d'afficher sur une carte des équipements géolocalisables.
 
-## Configuration
-Dans la partie configuration du plugin, vous pouvez définir les paramètres suivants :
-- Latitude et Longitude par défaut de la carte.
-- Zoom par défaut de la carte.
+## Installation et Configuration
 
-Ces paramètres sont utilisés pour centrer la carte si aucun équipement n'est géolocalisé
+### Installation
+1. Téléchargez et installez le plugin via le Market Jeedom
+2. Activez le plugin dans **Plugins > Gestion des plugins**
+3. Le plugin sera accessible dans **Plugins > Objets connectés > Géolocalisation**
+
+### Configuration du plugin
+Dans la partie configuration du plugin, vous pouvez définir les paramètres suivants :
+- **Latitude par défaut** : Latitude de centrage de la carte (ex: 48.8575 pour Paris)
+- **Longitude par défaut** : Longitude de centrage de la carte (ex: 2.3514 pour Paris)  
+- **Zoom par défaut** : Niveau de zoom initial de la carte (1-20)
+
+Ces paramètres sont utilisés pour centrer la carte si aucun équipement n'est géolocalisé.
+
 
 ## Utilisation
 Le plugin va rechercher dans l'ensemble des équipements configurés les commandes de type `info` et de type `numeric` et dont le nom est exactement `latitude` et `longitude`. Si ces commandes sont présentes, l'équipement sera affiché sur la carte.
@@ -34,6 +43,58 @@ En cliquant sur le marqueur d'un équipement sur la carte, il est possible de co
 Par défaut, seul l'historique de la dernière année est remonté pour limiter l'impact sur la base de données. En effet, la requête peut être lourde pour la base de données selon le nombre de positions historisées pour chaque commande `latitude` et `longitude`.
 
 Il est possible de modifier la période de recherche en modifiant les dates de début et de fin.
+
+## Widgets de géolocalisation
+
+Le plugin propose un système complet de widgets personnalisables pour afficher vos équipements géolocalisés directement sur le dashboard de Jeedom.
+
+### Interface de gestion
+
+L'interface du plugin est organisée en **deux onglets** :
+
+- **Géolocalisation** : Carte interactive principale avec gestion des équipements
+- **Widgets de carte** : Gestion dédiée des widgets de dashboard
+
+### Créer un widget de carte
+
+1. Accédez à l'onglet **"Widgets de carte"**
+2. Cliquez sur **"Créer un widget de carte"**
+3. Configurez les paramètres :
+   - **Nom du widget** : Nom affiché sur le dashboard
+   - **Objet parent** : Équipements de quel objet afficher
+   - **Hauteur** : Hauteur de la carte en pixels (200-800px)
+   - **Largeur** : Largeur du widget
+     - `Automatique` : S'adapte à l'espace disponible
+     - `100% de largeur` : Prend toute la largeur disponible
+     - `300px, 400px, 500px, 600px, 800px` : Tailles fixes
+
+### Gestion des widgets
+
+Dans l'onglet **"Widgets de carte"**, vous disposez d'un tableau de gestion complet :
+
+| Fonctionnalité | Description |
+|----------------|-------------|
+| **Modifier** | Éditer toutes les propriétés du widget |
+| **Supprimer** | Supprimer le widget avec confirmation |
+| **État** | Visualiser l'état (Actif/Masqué/Inactif) |
+
+### Fonctionnalités des widgets
+
+Les widgets affichent automatiquement :
+- **Carte interactive** avec contrôles de zoom
+- **Marqueurs** pour chaque équipement géolocalisé
+- **Popups informatifs** au clic sur les marqueurs
+- **Actualisation automatique** toutes les 60 secondes
+- **Compteur d'équipements** affiché en bas du widget
+- **Thème adaptatif** (clair/sombre)
+
+### Utilisation sur le dashboard
+
+1. Créez un ou plusieurs widgets via l'interface de gestion
+2. Les widgets apparaissent automatiquement sur le dashboard
+3. Chaque widget affiche les équipements de l'objet parent configuré
+4. La taille s'adapte selon les paramètres définis (hauteur/largeur)
+
 
 ### Créer un équipement géolocalisable
 

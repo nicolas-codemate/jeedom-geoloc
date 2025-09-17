@@ -30,6 +30,11 @@ function buildTree(jeeObject $parentObject, array $eqLogics): array
 
     $countItems = count($items);
     foreach ($parentObject->getChild() as $child) {
+        // Check if user has access to child object
+        if (!$child->hasRight('r')) {
+            continue;
+        }
+        
         $child = buildTree($child, $eqLogics);
         $toReturn['child'][] = $child;
         $countItems += $child['countItems'];
@@ -52,6 +57,11 @@ function buildGeolocalisableItems(jeeObject $parentObject, array $eqLogics): arr
             continue;
         }
 
+        // Check if user has access to this equipment
+        if (!$eqLogic->hasRight('r')) {
+            continue;
+        }
+
         $geolocalisableItem = new GeolocalisableEquipment($eqLogic);
         if ($geolocalisableItem->hasCoordinate()) {
             $geolocalisableItems[] = $geolocalisableItem;
@@ -66,13 +76,19 @@ try {
     require_once dirname(__FILE__).'/../../../../core/php/core.inc.php';
     include_file('core', 'authentification', 'php');
 
-    if (!isConnect('admin')) {
+    if (!isConnect()) {
         throw new Exception(__('401 - Accès non autorisé', __FILE__));
     }
 
     require_once __DIR__.'/../../core/class/geoloc.class.php';
 
     $action = init('action');
+
+    // Actions requiring admin rights
+    $adminOnlyActions = ['addGeolocation'];
+    if (in_array($action, $adminOnlyActions) && !isConnect('admin')) {
+        throw new Exception(__('401 - Droits administrateur requis pour cette action', __FILE__));
+    }
 
     switch ($action) {
         case "getEquipments":
@@ -89,6 +105,11 @@ try {
                 $parentObject = jeeObject::byId($parentObjectId);
                 if (null === $parentObject) {
                     ajax::success([]);
+                }
+                
+                // Check if user has access to this object
+                if (!$parentObject->hasRight('r')) {
+                    throw new Exception(__('401 - Accès non autorisé à cet objet', __FILE__));
                 }
             }
 
@@ -138,6 +159,12 @@ try {
             $eqLogic = eqLogic::byId($eqLogicId);
             if (!$eqLogic) {
                 ajax::error(__('Équipement introuvable', __FILE__));
+            }
+
+            // Check if user has access to this equipment's object
+            $eqObject = $eqLogic->getObject();
+            if ($eqObject && !$eqObject->hasRight('r')) {
+                throw new Exception(__('401 - Accès non autorisé à cet équipement', __FILE__));
             }
 
             $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);

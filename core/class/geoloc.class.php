@@ -30,8 +30,34 @@ class geoloc extends eqLogic
     /*
     * Permet de définir les possibilités de personnalisation du widget (en cas d'utilisation de la fonction 'toHtml' par exemple)
     * Tableau multidimensionnel - exemple: array('custom' => true, 'custom::layout' => false)
-    public static $_widgetPossibility = array();
     */
+    public static $_widgetPossibility = array(
+        'custom' => true,
+        'custom::layout' => false,
+        'parameters' => array(
+            'height' => array(
+                'name' => 'Hauteur (px)',
+                'type' => 'input',
+                'default' => 300,
+                'allow_displayType' => array('dashboard'),
+            ),
+            'width' => array(
+                'name' => 'Largeur',
+                'type' => 'select',
+                'default' => 'auto',
+                'values' => array(
+                    'auto' => 'Automatique',
+                    '100%' => '100% de largeur',
+                    '300px' => '300px',
+                    '400px' => '400px',
+                    '500px' => '500px',
+                    '600px' => '600px',
+                    '800px' => '800px',
+                ),
+                'allow_displayType' => array('dashboard'),
+            ),
+        ),
+    );
 
     /*
     * Permet de crypter/décrypter automatiquement des champs de configuration du plugin
@@ -171,8 +197,39 @@ class geoloc extends eqLogic
 
     /*
     * Permet de modifier l'affichage du widget (également utilisable par les commandes)
-    public function toHtml($_version = 'dashboard') {}
     */
+    public function toHtml($_version = 'dashboard') {
+        // Pour un widget de carte, on peut bypasser preToHtml si l'équipement est valide
+        if (!$this->getIsEnable() || !$this->getIsVisible()) {
+            return '';
+        }
+
+        $version = jeedom::versionAlias($_version);
+        
+        // Seul le dashboard est supporté pour ce widget
+        if ($version != 'dashboard') {
+            return '';
+        }
+
+        // Récupérer l'objet parent
+        $object = $this->getObject();
+        if (!is_object($object)) {
+            return '';
+        }
+
+        // Variables de remplacement pour le template
+        $replace = array();
+        $replace['#id#'] = $this->getId();
+        $replace['#name#'] = $this->getName();
+        $replace['#hide_name#'] = '';
+        $replace['#object_id#'] = $object->getId();
+        $replace['#object_name#'] = $object->getName();
+        $replace['#height#'] = $this->getConfiguration('height', 300);
+        $replace['#width#'] = $this->getConfiguration('width', 'auto');
+
+        $template = getTemplate('core', $version, 'geolocation.template', __CLASS__);
+        return template_replace($replace, $template);
+    }
 
     /*     * **********************Getteur Setteur*************************** */
 }

@@ -12,7 +12,7 @@ final class GeolocalisableEquipment implements JsonSerializable
     /**
      * @var CoordinateHistory[]
      */
-    private $coordinateHistory;
+    private $coordinateHistory = [];
     private $eqLogic;
 
     private $id;
@@ -180,7 +180,7 @@ final class GeolocalisableEquipment implements JsonSerializable
     private function buildFullHumanName(eqLogic $eqLogic): string
     {
         $object = $eqLogic->getObject();
-        if (null === $object) {
+        if (!$object) {
             return $eqLogic->getName();
         }
         $fullHumanName = [$object->getName()];

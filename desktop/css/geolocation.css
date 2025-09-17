@@ -1,0 +1,238 @@
+/* Styles pour le widget de géolocalisation dashboard */
+
+.geolocation-widget {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    min-width: 300px;
+    min-height: 250px;
+}
+
+.geolocation-widget .widget-title {
+    background: #337ab7;
+    color: #fff;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid #2e6da4;
+}
+
+.geolocation-widget .widget-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.geolocation-widget .widget-body {
+    position: relative;
+    padding: 0;
+}
+
+.geolocation-widget .geolocation-map {
+    position: relative;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.geolocation-widget .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    font-size: 14px;
+    color: #666;
+}
+
+.geolocation-widget .loading-overlay i {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.geolocation-widget .geoloc-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #d9534f;
+    font-size: 14px;
+    padding: 20px;
+    text-align: center;
+}
+
+.geolocation-widget .geoloc-error i {
+    font-size: 32px;
+    margin-bottom: 12px;
+    opacity: 0.7;
+}
+
+.geolocation-widget .widget-info {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-top: 1px solid #eee;
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+}
+
+.geolocation-widget .equipment-count {
+    font-weight: 500;
+}
+
+/* Styles pour les popups Leaflet */
+.geoloc-widget-popup .leaflet-popup-content-wrapper {
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.geoloc-widget-popup .leaflet-popup-content {
+    margin: 12px 16px;
+    line-height: 1.4;
+    font-size: 13px;
+}
+
+.geoloc-widget-popup .geoloc-popup h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+
+.geoloc-widget-popup .geoloc-popup p {
+    margin: 8px 0;
+    color: #666;
+}
+
+.geoloc-widget-popup .geoloc-popup p strong {
+    color: #333;
+    font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .geolocation-widget {
+        min-width: 250px;
+    }
+    
+    .geolocation-widget .widget-title {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    
+    .geolocation-widget .widget-info {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+    
+    .geoloc-widget-popup .leaflet-popup-content {
+        margin: 10px 12px;
+        font-size: 12px;
+    }
+    
+    .geoloc-widget-popup .geoloc-popup h4 {
+        font-size: 13px;
+    }
+}
+
+/* Dark theme support */
+[data-theme*="Dark"] .geolocation-widget {
+    background: #2c3e50;
+    border-color: #34495e;
+    color: #ecf0f1;
+}
+
+[data-theme*="Dark"] .geolocation-widget .widget-title {
+    background: #34495e;
+    border-bottom-color: #2c3e50;
+}
+
+[data-theme*="Dark"] .geolocation-widget .widget-info {
+    background: #34495e;
+    border-top-color: #2c3e50;
+    color: #bdc3c7;
+}
+
+[data-theme*="Dark"] .geolocation-widget .loading-overlay {
+    background: rgba(44, 62, 80, 0.9);
+    color: #bdc3c7;
+}
+
+[data-theme*="Dark"] .geolocation-widget .geoloc-error {
+    color: #e74c3c;
+}
+
+[data-theme*="Dark"] .geoloc-widget-popup .leaflet-popup-content-wrapper {
+    background: #34495e;
+    color: #ecf0f1;
+}
+
+[data-theme*="Dark"] .geoloc-widget-popup .geoloc-popup h4 {
+    color: #ecf0f1;
+    border-bottom-color: #2c3e50;
+}
+
+[data-theme*="Dark"] .geoloc-widget-popup .geoloc-popup p {
+    color: #bdc3c7;
+}
+
+[data-theme*="Dark"] .geoloc-widget-popup .geoloc-popup p strong {
+    color: #ecf0f1;
+}
+
+/* Animation pour l'actualisation */
+.geolocation-widget.refreshing .widget-title::after {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 8px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Styles pour l'intégration avec le système de grille Jeedom */
+.div_displayEquipement .geolocation-widget {
+    margin: 5px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+/* Contrôles Leaflet personnalisés pour le widget */
+.geolocation-widget .leaflet-control-container {
+    font-size: 12px;
+}
+
+.geolocation-widget .leaflet-control-zoom {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.geolocation-widget .leaflet-control-zoom a {
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    font-size: 14px;
+}
+
+.geolocation-widget .leaflet-control-attribution {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.8);
+}
