@@ -231,6 +231,41 @@ try {
             ajax::success($geolocalisableEquipment->getCoordinateHistory());
 
         }
+        case "getObjectEquipments":
+        {
+            $objectId = init('objectId');
+            
+            if (!$objectId) {
+                ajax::error(__('ID de l\'objet requis', __FILE__));
+            }
+            
+            // Check if user has access to this object
+            $object = jeeObject::byId($objectId);
+            if (!$object || !$object->hasRight('r')) {
+                throw new Exception(__('401 - Accès non autorisé à cet objet', __FILE__));
+            }
+            
+            $eqLogics = eqLogic::byObjectId($objectId, true);
+            $geolocalisableEquipments = [];
+            
+            foreach ($eqLogics as $eqLogic) {
+                // Check if user has access to this equipment
+                if (!$eqLogic->hasRight('r')) {
+                    continue;
+                }
+                
+                $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+                if ($geolocalisableEquipment->hasCoordinate()) {
+                    $geolocalisableEquipments[] = [
+                        'id' => $eqLogic->getId(),
+                        'name' => $eqLogic->getName(),
+                        'humanName' => $eqLogic->getHumanName()
+                    ];
+                }
+            }
+            
+            ajax::success($geolocalisableEquipments);
+        }
         default:
             throw new RuntimeException(__('Aucune méthode correspondante à', __FILE__).' : '.$action);
     }

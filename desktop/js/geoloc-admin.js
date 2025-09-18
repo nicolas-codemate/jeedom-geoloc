@@ -1036,6 +1036,18 @@ $(async function () {
                     $('#edit_is_enable').prop('checked', widget.isEnable == '1');
                     $('#edit_is_visible').prop('checked', widget.isVisible == '1');
                     
+                    // Handle equipment selection
+                    const selectedEquipments = widget.configuration.selectedEquipments || '';
+                    if (selectedEquipments === '') {
+                        $('#edit_show_all_equipment').prop('checked', true);
+                        $('#equipment_selection_container').hide();
+                    } else {
+                        $('#edit_show_all_equipment').prop('checked', false);
+                        $('#equipment_selection_container').show();
+                        // Load equipment list for current object
+                        GeolocAdmin.Widgets.loadObjectEquipments(widget.object_id || '', selectedEquipments);
+                    }
+                    
                     // Show modal
                     $('#editWidgetModal').modal('show');
                 }
@@ -1056,7 +1068,8 @@ $(async function () {
                 isVisible: $('#edit_is_visible').is(':checked') ? 1 : 0,
                 configuration: {
                     height: parseInt($('#edit_height').val()),
-                    width: $('#edit_width').val()
+                    width: $('#edit_width').val(),
+                    selectedEquipments: GeolocAdmin.Widgets.getSelectedEquipments()
                 }
             };
             
@@ -1183,6 +1196,62 @@ $(async function () {
                     }
                 }
             });
+        },
+
+        /**
+         * Load equipment list for a specific object
+         * Fetches available equipment for the selected parent object
+         * @param {string|number} objectId - ID of the parent object
+         * @param {string} selectedEquipments - Comma-separated list of selected equipment IDs
+         */
+        loadObjectEquipments: function(objectId, selectedEquipments) {
+            if (!objectId) {
+                $('#edit_selected_equipment').empty();
+                return;
+            }
+
+            $.ajax({
+                type: 'POST',
+                url: 'plugins/geoloc/core/ajax/geoloc.ajax.php',
+                data: {
+                    action: 'getObjectEquipments',
+                    objectId: objectId
+                },
+                dataType: 'json',
+                error: function(request, status, error) {
+                    console.error('Error loading equipment list:', error);
+                    $('#edit_selected_equipment').empty();
+                },
+                success: function(data) {
+                    const $select = $('#edit_selected_equipment');
+                    $select.empty();
+
+                    if (data.state === 'ok' && data.result.length > 0) {
+                        const selectedIds = selectedEquipments ? selectedEquipments.split(',') : [];
+                        
+                        data.result.forEach(equipment => {
+                            const isSelected = selectedIds.includes(equipment.id.toString());
+                            $select.append(`<option value="${equipment.id}" ${isSelected ? 'selected' : ''}>${equipment.humanName}</option>`);
+                        });
+                    } else {
+                        $select.append('<option value="">Aucun équipement géolocalisable trouvé</option>');
+                    }
+                }
+            });
+        },
+
+        /**
+         * Get selected equipment IDs from the form
+         * Returns comma-separated list of selected equipment IDs or empty string for "show all"
+         * @returns {string} Comma-separated equipment IDs or empty string
+         */
+        getSelectedEquipments: function() {
+            if ($('#edit_show_all_equipment').is(':checked')) {
+                return '';
+            }
+            
+            const selectedValues = $('#edit_selected_equipment').val();
+            return Array.isArray(selectedValues) ? selectedValues.join(',') : '';
         }
     };
 
@@ -1437,6 +1506,29 @@ $(async function () {
             // Save widget changes button
             $('#saveWidgetChanges').off('click').on('click', function () {
                 GeolocAdmin.Widgets.saveWidgetChanges();
+            });
+
+            // Equipment selection management
+            $('#edit_show_all_equipment').off('change').on('change', function () {
+                const showAll = $(this).is(':checked');
+                if (showAll) {
+                    $('#equipment_selection_container').hide();
+                } else {
+                    $('#equipment_selection_container').show();
+                    // Load equipment for current object if not already loaded
+                    const objectId = $('#edit_parent_object').val();
+                    if (objectId) {
+                        GeolocAdmin.Widgets.loadObjectEquipments(objectId, '');
+                    }
+                }
+            });
+
+            // Object parent change handler for equipment loading
+            $('#edit_parent_object').off('change').on('change', function () {
+                const objectId = $(this).val();
+                if (!$('#edit_show_all_equipment').is(':checked')) {
+                    GeolocAdmin.Widgets.loadObjectEquipments(objectId, '');
+                }
             });
 
             // Initialize tabs

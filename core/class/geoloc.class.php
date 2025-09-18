@@ -56,6 +56,12 @@ class geoloc extends eqLogic
                 ),
                 'allow_displayType' => array('dashboard'),
             ),
+            'selectedEquipments' => array(
+                'name' => 'Équipements sélectionnés',
+                'type' => 'input',
+                'default' => '',
+                'allow_displayType' => array('dashboard'),
+            ),
         ),
     );
 
@@ -226,6 +232,7 @@ class geoloc extends eqLogic
         $replace['#object_name#'] = $object->getName();
         $replace['#height#'] = $this->getConfiguration('height', 300);
         $replace['#width#'] = $this->getConfiguration('width', 'auto');
+        $replace['#selectedEquipments#'] = $this->getConfiguration('selectedEquipments', '');
 
         $template = getTemplate('core', $version, 'geolocation.template', __CLASS__);
         return template_replace($replace, $template);

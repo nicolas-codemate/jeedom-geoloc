@@ -16,10 +16,14 @@ function initGeolocWidget(widgetId, objectId, objectName) {
         return;
     }
 
+    // Get selected equipments from widget data attribute
+    const selectedEquipments = $(`.eqLogic-widget[data-eqlogic_id="${widgetId}"]`).data('selected-equipments') || '';
+
     const widget = {
         id: widgetId,
         objectId: objectId,
         objectName: objectName,
+        selectedEquipments: selectedEquipments,
         map: null,
         markers: [],
         refreshInterval: null,
@@ -193,7 +197,15 @@ function processEquipments(widget, data) {
 
     // Collect and filter equipment with valid coordinates
     const allEquipments = GeolocCommon.EquipmentProcessor.collectEquipments(data);
-    const validEquipments = GeolocCommon.EquipmentProcessor.filterValidCoordinates(allEquipments);
+    let validEquipments = GeolocCommon.EquipmentProcessor.filterValidCoordinates(allEquipments);
+    
+    // Filter by selected equipments if configured
+    if (widget.selectedEquipments && widget.selectedEquipments.trim() !== '') {
+        const selectedIds = widget.selectedEquipments.split(',').map(id => parseInt(id.trim()));
+        validEquipments = validEquipments.filter(equipment => 
+            selectedIds.includes(parseInt(equipment.id))
+        );
+    }
 
     // Update equipment counter
     updateEquipmentCount(widget.id, validEquipments.length);

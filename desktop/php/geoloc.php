@@ -229,6 +229,22 @@ sendVarToJS('eqType', $plugin->getId());
                                 </label>
                             </div>
                         </div>
+                        
+                        <div class="form-group">
+                            <label>{{Sélection des équipements}}</label>
+                            <div class="checkbox" style="margin-bottom: 10px;">
+                                <label>
+                                    <input type="checkbox" name="show_all_equipment" id="edit_show_all_equipment" checked> {{Afficher tous les équipements de l'objet parent}}
+                                </label>
+                            </div>
+                            <div id="equipment_selection_container" style="display: none;">
+                                <label for="edit_selected_equipment">{{Équipements sélectionnés}}</label>
+                                <select multiple class="form-control" name="selected_equipment" id="edit_selected_equipment" size="6">
+                                    <!-- Options will be populated by JavaScript -->
+                                </select>
+                                <small class="help-block">{{Maintenez Ctrl (Cmd sur Mac) enfoncé pour sélectionner plusieurs équipements}}</small>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
