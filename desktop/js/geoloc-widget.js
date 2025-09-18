@@ -17,7 +17,7 @@ function initGeolocWidget(widgetId, objectId, objectName) {
     }
 
     // Get selected equipments from widget data attribute
-    const selectedEquipments = $(`.eqLogic-widget[data-eqlogic_id="${widgetId}"]`).data('selected-equipments') || '';
+    const selectedEquipments = $(`.eqLogic-widget[data-eqlogic_id="${widgetId}"]`).attr('data-selected-equipments') || '';
 
     const widget = {
         id: widgetId,
