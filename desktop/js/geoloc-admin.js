@@ -954,6 +954,7 @@ $(async function () {
             
             const height = widget.configuration?.height || 300;
             const width = widget.configuration?.width || 'auto';
+            const selectedEquipments = widget.configuration?.selectedEquipments || '';
             const isEnable = widget.isEnable == '1';
             const isVisible = widget.isVisible == '1';
             
@@ -966,10 +967,14 @@ $(async function () {
                 statusHtml = '<span class="label label-danger">Inactif</span>';
             }
             
+            // Create row with placeholder for equipment badge
             const newRow = `
                 <tr data-widget-id="${widget.id}">
                     <td>${widget.name}</td>
                     <td>${objectName}</td>
+                    <td class="equipment-cell">
+                        <span class="label label-secondary">Chargement...</span>
+                    </td>
                     <td>${width} × ${height}px</td>
                     <td>${statusHtml}</td>
                     <td>
@@ -985,8 +990,16 @@ $(async function () {
             
             $('#widgetsTable tbody').append(newRow);
             
-            // Bind events for the new row
+            // Load equipment badge asynchronously
             const $newRow = $(`tr[data-widget-id="${widget.id}"]`);
+            GeolocAdmin.Widgets.formatEquipmentBadge(selectedEquipments, widget.object_id)
+                .then(badgeHtml => {
+                    $newRow.find('.equipment-cell').html(badgeHtml);
+                    // Initialize Bootstrap tooltips
+                    $newRow.find('[data-toggle="tooltip"]').tooltip();
+                });
+            
+            // Bind events for the new row
             $newRow.find('.widget-action[data-action=edit]').on('click', function () {
                 const widgetId = $(this).data('widget-id');
                 GeolocAdmin.Widgets.initEditWidgetModal(widgetId);
@@ -1126,10 +1139,20 @@ $(async function () {
                 'Aucun';
             $row.find('td:eq(1)').text(objectName); // Object parent
             
-            $row.find('td:eq(2)').text(formData.configuration.width + ' × ' + formData.configuration.height + 'px'); // Dimensions
+            // Update equipment badge (column 2)
+            const $equipmentCell = $row.find('td:eq(2)');
+            $equipmentCell.html('<span class="label label-secondary">Mise à jour...</span>');
+            GeolocAdmin.Widgets.formatEquipmentBadge(formData.configuration.selectedEquipments, formData.object_id)
+                .then(badgeHtml => {
+                    $equipmentCell.html(badgeHtml);
+                    // Initialize Bootstrap tooltips for new content
+                    $equipmentCell.find('[data-toggle="tooltip"]').tooltip();
+                });
             
-            // Update status
-            const $statusCell = $row.find('td:eq(3)');
+            $row.find('td:eq(3)').text(formData.configuration.width + ' × ' + formData.configuration.height + 'px'); // Dimensions
+            
+            // Update status (column 4)
+            const $statusCell = $row.find('td:eq(4)');
             $statusCell.empty();
             if (formData.isEnable && formData.isVisible) {
                 $statusCell.html('<span class="label label-success">Actif</span>');
@@ -1252,6 +1275,60 @@ $(async function () {
             
             const selectedValues = $('#edit_selected_equipment').val();
             return Array.isArray(selectedValues) ? selectedValues.join(',') : '';
+        },
+
+        /**
+         * Format equipment badge for table display
+         * @param {string} selectedEquipments Comma-separated equipment IDs
+         * @param {string|number} objectId Parent object ID
+         * @returns {Promise<string>} Promise resolving to badge HTML
+         */
+        formatEquipmentBadge: function(selectedEquipments, objectId) {
+            return new Promise((resolve) => {
+                if (!selectedEquipments || selectedEquipments.trim() === '') {
+                    resolve('<span class="label label-default">Tous</span>');
+                    return;
+                }
+
+                // Get equipment names via AJAX
+                $.ajax({
+                    type: 'POST',
+                    url: 'plugins/geoloc/core/ajax/geoloc.ajax.php',
+                    data: {
+                        action: 'getObjectEquipments',
+                        objectId: objectId
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.state === 'ok' && data.result.length > 0) {
+                            const selectedIds = selectedEquipments.split(',').map(id => id.trim());
+                            const selectedEquipmentNames = data.result
+                                .filter(eq => selectedIds.includes(eq.id.toString()))
+                                .map(eq => eq.humanName);
+
+                            if (selectedEquipmentNames.length === 0) {
+                                resolve('<span class="label label-warning">Aucun équipement valide</span>');
+                                return;
+                            }
+
+                            const count = selectedEquipmentNames.length;
+                            const tooltip = selectedEquipmentNames.join(', ');
+                            const badge = `<span class="label label-info equipment-badge" 
+                                                 data-toggle="tooltip" 
+                                                 data-placement="top" 
+                                                 title="${tooltip}">
+                                                 ${count} équipement${count > 1 ? 's' : ''}
+                                           </span>`;
+                            resolve(badge);
+                        } else {
+                            resolve('<span class="label label-warning">Erreur de chargement</span>');
+                        }
+                    },
+                    error: function() {
+                        resolve('<span class="label label-danger">Erreur</span>');
+                    }
+                });
+            });
         }
     };
 
@@ -1536,6 +1613,11 @@ $(async function () {
                 e.preventDefault();
                 $(this).tab('show');
             });
+
+            // Initialize Bootstrap tooltips for equipment badges
+            setTimeout(() => {
+                $('[data-toggle="tooltip"]').tooltip();
+            }, 500);
 
             // Handle URL hash to open specific tab
             if (window.location.hash) {

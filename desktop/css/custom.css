@@ -18,6 +18,32 @@ body > div.bootbox.modal.fade.in > div.modal-xl {
     z-index: 30000 !important;
 }
 
+/* Equipment badges in widget table */
+.equipment-badge {
+    cursor: help;
+}
+
+.equipment-badge:hover {
+    opacity: 0.8;
+}
+
+/* Equipment column styling */
+.equipment-cell {
+    min-width: 120px;
+    text-align: center;
+}
+
+/* Loading states */
+.label-secondary {
+    background-color: #6c757d;
+}
+
+/* Ensure tooltips are readable */
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+}
+
 /* Widget management table styles */
 #widgetsTable {
     margin-top: 10px;
