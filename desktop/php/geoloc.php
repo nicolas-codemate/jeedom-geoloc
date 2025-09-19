@@ -1,6 +1,5 @@
 <?php
 
-include_once __DIR__.'/../../core/class/Coordinate.php';
 include_once __DIR__.'/../../core/class/GeolocalisableEquipment.php';
 
 /**
