@@ -1174,10 +1174,10 @@ $(async function () {
                     const selectedEquipments = widget.configuration.selectedEquipments || '';
                     if (selectedEquipments === '') {
                         $('#edit_show_all_equipment').prop('checked', true);
-                        $('#equipment_selection_container').hide();
+                        $('#edit_equipment_selection_container').hide();
                     } else {
                         $('#edit_show_all_equipment').prop('checked', false);
-                        $('#equipment_selection_container').show();
+                        $('#edit_equipment_selection_container').show();
                         // Load equipment list for current object
                         GeolocAdmin.Widgets.loadObjectEquipmentsForModal(widget.object_id || '', selectedEquipments, 'edit');
                     }

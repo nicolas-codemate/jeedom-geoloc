@@ -283,7 +283,7 @@ sendVarToJS('eqType', $plugin->getId());
                                     <input type="checkbox" name="show_all_equipment" id="edit_show_all_equipment" checked> {{Afficher tous les équipements de l'objet parent}}
                                 </label>
                             </div>
-                            <div id="equipment_selection_container" style="display: none;">
+                            <div id="edit_equipment_selection_container" style="display: none;">
                                 <label for="edit_selected_equipment">{{Équipements sélectionnés}}</label>
                                 <select multiple class="form-control" name="selected_equipment" id="edit_selected_equipment" size="6">
                                     <!-- Options will be populated by JavaScript -->
