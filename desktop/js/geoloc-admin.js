@@ -1312,11 +1312,12 @@ $(async function () {
                             }
 
                             const count = selectedEquipmentNames.length;
-                            const tooltip = selectedEquipmentNames.join(', ');
+                            const tooltip = selectedEquipmentNames.join('<br>• ');
                             const badge = `<span class="label label-info equipment-badge" 
                                                  data-toggle="tooltip" 
                                                  data-placement="top" 
-                                                 title="${tooltip}">
+                                                 data-html="true"
+                                                 title="• ${tooltip}">
                                                  ${count} équipement${count > 1 ? 's' : ''}
                                            </span>`;
                             resolve(badge);

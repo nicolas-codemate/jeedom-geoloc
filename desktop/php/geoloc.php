@@ -34,11 +34,12 @@ function generateEquipmentBadge($selectedEquipments, $parentObjectId) {
     }
     
     $count = count($equipmentNames);
-    $tooltip = implode(', ', $equipmentNames);
+    $tooltip = '• ' . implode('<br>• ', $equipmentNames);
     
     return '<span class="label label-info equipment-badge" 
                   data-toggle="tooltip" 
                   data-placement="top" 
+                  data-html="true"
                   title="' . htmlspecialchars($tooltip) . '">' 
                   . $count . ' équipement' . ($count > 1 ? 's' : '') . 
            '</span>';
