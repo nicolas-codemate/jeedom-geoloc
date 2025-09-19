@@ -740,6 +740,87 @@ $(async function () {
      * Handles creation, editing, and deletion of geolocation dashboard widgets
      */
     GeolocAdmin.Widgets = {
+        
+        /**
+         * Generate unified modal content for widget configuration
+         * @param {string} mode - 'add' or 'edit'
+         * @returns {string} HTML content for the modal
+         */
+        generateWidgetModalContent: function(mode = 'add') {
+            const prefix = mode === 'add' ? 'add' : 'edit';
+            const isEdit = mode === 'edit';
+            
+            return `
+<form name="widgetForm">
+    ${isEdit ? '<input type="hidden" name="widget_id" id="edit_widget_id">' : ''}
+    
+    <div class="form-group">
+        <label for="${prefix}_widget_name" class="control-label">Nom du widget</label>
+        <input type="text" class="form-control" id="${prefix}_widget_name" name="widget_name" 
+               placeholder="Nom du widget" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="${prefix}_parent_object" class="control-label">Objet parent</label>
+        <select class="form-control" name="parent_object" id="${prefix}_parent_object" required>
+            <option value="">Sélectionner un objet</option>
+        </select>
+    </div>
+    
+    <div class="row">
+        <div class="form-group col-md-6">
+            <label for="${prefix}_height" class="control-label">Hauteur de la carte (px)</label>
+            <input type="number" class="form-control" name="height" id="${prefix}_height" 
+                   min="200" max="800" value="300">
+        </div>
+        <div class="form-group col-md-6">
+            <label for="${prefix}_width" class="control-label">Largeur du widget</label>
+            <select class="form-control" name="width" id="${prefix}_width">
+                <option value="auto">Automatique</option>
+                <option value="100%">100% de largeur</option>
+                <option value="300px">300px</option>
+                <option value="400px">400px</option>
+                <option value="500px">500px</option>
+                <option value="600px">600px</option>
+                <option value="800px">800px</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" name="is_enable" id="${prefix}_is_enable" ${isEdit ? '' : 'checked'}> Actif
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" name="is_visible" id="${prefix}_is_visible" ${isEdit ? '' : 'checked'}> Visible
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label>Sélection des équipements</label>
+        <div class="checkbox" style="margin-bottom: 10px;">
+            <label>
+                <input type="checkbox" name="show_all_equipment" id="${prefix}_show_all_equipment" checked> 
+                Afficher tous les équipements de l'objet parent
+            </label>
+        </div>
+        <div id="${prefix}_equipment_selection_container" style="display: none;">
+            <label for="${prefix}_selected_equipment">Équipements sélectionnés</label>
+            <select multiple class="form-control" name="selected_equipment" id="${prefix}_selected_equipment" size="6">
+                <!-- Options will be populated by JavaScript -->
+            </select>
+            <small class="help-block">Maintenez Ctrl (Cmd sur Mac) enfoncé pour sélectionner plusieurs équipements</small>
+        </div>
+    </div>
+</form>`;
+        },
         /**
          * Initialize modal for adding a new geolocation widget
          * Creates a modal form for configuring and creating dashboard widgets
@@ -796,20 +877,19 @@ $(async function () {
         </div>
     </div>
     
-    <div class="row">
-        <div class="form-group col-md-6">
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" name="is_enable" id="add_is_enable" checked> Actif
-                </label>
-            </div>
+    <div class="form-group">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" name="is_enable" id="add_is_enable" checked> Actif
+            </label>
         </div>
-        <div class="form-group col-md-6">
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" name="is_visible" id="add_is_visible" checked> Visible
-                </label>
-            </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" name="is_visible" id="add_is_visible" checked> Visible
+            </label>
         </div>
     </div>
 </form>
