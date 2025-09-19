@@ -779,6 +779,39 @@ $(async function () {
             </select>
         </div>
     </div>
+    
+    <div class="form-group">
+        <label>Sélection des équipements</label>
+        <div class="checkbox" style="margin-bottom: 10px;">
+            <label>
+                <input type="checkbox" name="show_all_equipment" id="add_show_all_equipment" checked> Afficher tous les équipements de l'objet parent
+            </label>
+        </div>
+        <div id="add_equipment_selection_container" style="display: none;">
+            <label for="add_selected_equipment">Équipements sélectionnés</label>
+            <select multiple class="form-control" name="selected_equipment" id="add_selected_equipment" size="6">
+                <!-- Options will be populated by JavaScript -->
+            </select>
+            <small class="help-block">Maintenez Ctrl (Cmd sur Mac) enfoncé pour sélectionner plusieurs équipements</small>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="form-group col-md-6">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" name="is_enable" id="add_is_enable" checked> Actif
+                </label>
+            </div>
+        </div>
+        <div class="form-group col-md-6">
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" name="is_visible" id="add_is_visible" checked> Visible
+                </label>
+            </div>
+        </div>
+    </div>
 </form>
         `;
 
@@ -805,6 +838,9 @@ $(async function () {
                     const parentObjectId = $('#parentObject').val();
                     const widgetHeight = $('#widgetHeight').val() || 300;
                     const widgetWidth = $('#widgetWidth').val() || 'auto';
+                    const selectedEquipments = GeolocAdmin.Widgets.getSelectedEquipmentsFromAddModal();
+                    const isEnable = $('#add_is_enable').is(':checked');
+                    const isVisible = $('#add_is_visible').is(':checked');
 
                     if (!widgetName || !parentObjectId) {
                         $.fn.showAlert({message: 'Veuillez remplir tous les champs obligatoires', level: 'error'});
@@ -821,7 +857,7 @@ $(async function () {
                     $acceptButton.html('Création en cours...');
 
                     // Appel AJAX pour créer l'équipement
-                    GeolocAdmin.Widgets.createWidgetEquipment(widgetName, parentObjectId, widgetHeight, widgetWidth);
+                    GeolocAdmin.Widgets.createWidgetEquipment(widgetName, parentObjectId, widgetHeight, widgetWidth, selectedEquipments, isEnable, isVisible);
                 }
             };
 
@@ -830,6 +866,7 @@ $(async function () {
             // Peupler le select des objets une fois la modal affichée
             setTimeout(() => {
                 GeolocAdmin.Widgets.populateObjectSelect();
+                GeolocAdmin.Widgets.bindAddModalEvents();
             }, 100);
         },
 
@@ -898,19 +935,23 @@ $(async function () {
          * @param {string|number} objectId - Parent object ID
          * @param {number} height - Widget height in pixels
          * @param {string} width - Widget width (e.g., 'auto', '100%', '300px')
+         * @param {string} selectedEquipments - Comma-separated equipment IDs
+         * @param {boolean} isEnable - Whether widget is enabled
+         * @param {boolean} isVisible - Whether widget is visible
          */
-        createWidgetEquipment: function(name, objectId, height, width) {
+        createWidgetEquipment: function(name, objectId, height, width, selectedEquipments, isEnable, isVisible) {
             // Prepare the equipment data as an array (Jeedom expects an array of equipment)
             const eqLogicData = [{
                 name: name,
                 logicalId: 'widget_' + Date.now(),
                 object_id: parseInt(objectId) || null,
                 eqType_name: 'geoloc',
-                isEnable: 1,
-                isVisible: 1,
+                isEnable: isEnable ? 1 : 0,
+                isVisible: isVisible ? 1 : 0,
                 configuration: {
                     height: parseInt(height) || 300,
-                    width: width || 'auto'
+                    width: width || 'auto',
+                    selectedEquipments: selectedEquipments || ''
                 }
             }];
             
@@ -1330,6 +1371,86 @@ $(async function () {
                     }
                 });
             });
+        },
+
+        /**
+         * Bind events for the add modal equipment selection
+         */
+        bindAddModalEvents: function() {
+            // Equipment selection management for add modal
+            $('#add_show_all_equipment').off('change').on('change', function () {
+                const showAll = $(this).is(':checked');
+                if (showAll) {
+                    $('#add_equipment_selection_container').hide();
+                } else {
+                    $('#add_equipment_selection_container').show();
+                    // Load equipment for current object if not already loaded
+                    const objectId = $('#parentObject').val();
+                    if (objectId) {
+                        GeolocAdmin.Widgets.loadObjectEquipmentsForAddModal(objectId, '');
+                    }
+                }
+            });
+
+            // Object parent change handler for equipment loading in add modal
+            $('#parentObject').off('change').on('change', function () {
+                const objectId = $(this).val();
+                if (!$('#add_show_all_equipment').is(':checked')) {
+                    GeolocAdmin.Widgets.loadObjectEquipmentsForAddModal(objectId, '');
+                }
+            });
+        },
+
+        /**
+         * Load equipment list for add modal
+         */
+        loadObjectEquipmentsForAddModal: function(objectId, selectedEquipments) {
+            if (!objectId) {
+                $('#add_selected_equipment').empty();
+                return;
+            }
+
+            $.ajax({
+                type: 'POST',
+                url: 'plugins/geoloc/core/ajax/geoloc.ajax.php',
+                data: {
+                    action: 'getObjectEquipments',
+                    objectId: objectId
+                },
+                dataType: 'json',
+                error: function(request, status, error) {
+                    console.error('Error loading equipment list for add modal:', error);
+                    $('#add_selected_equipment').empty();
+                },
+                success: function(data) {
+                    const $select = $('#add_selected_equipment');
+                    $select.empty();
+
+                    if (data.state === 'ok' && data.result.length > 0) {
+                        const selectedIds = selectedEquipments ? selectedEquipments.split(',') : [];
+                        
+                        data.result.forEach(equipment => {
+                            const isSelected = selectedIds.includes(equipment.id.toString());
+                            $select.append(`<option value="${equipment.id}" ${isSelected ? 'selected' : ''}>${equipment.humanName}</option>`);
+                        });
+                    } else {
+                        $select.append('<option value="">Aucun équipement géolocalisable trouvé</option>');
+                    }
+                }
+            });
+        },
+
+        /**
+         * Get selected equipment IDs from the add modal form
+         * @returns {string} Comma-separated equipment IDs or empty string
+         */
+        getSelectedEquipmentsFromAddModal: function() {
+            if ($('#add_show_all_equipment').is(':checked')) {
+                return '';
+            }
+            
+            const selectedValues = $('#add_selected_equipment').val();
+            return Array.isArray(selectedValues) ? selectedValues.join(',') : '';
         }
     };
 
