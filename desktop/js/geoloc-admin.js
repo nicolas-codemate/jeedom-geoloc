@@ -1179,7 +1179,7 @@ $(async function () {
                         $('#edit_show_all_equipment').prop('checked', false);
                         $('#equipment_selection_container').show();
                         // Load equipment list for current object
-                        GeolocAdmin.Widgets.loadObjectEquipments(widget.object_id || '', selectedEquipments);
+                        GeolocAdmin.Widgets.loadObjectEquipmentsForModal(widget.object_id || '', selectedEquipments, 'edit');
                     }
                     
                     // Show modal
@@ -1343,62 +1343,6 @@ $(async function () {
         },
 
         /**
-         * Load equipment list for a specific object
-         * Fetches available equipment for the selected parent object
-         * @param {string|number} objectId - ID of the parent object
-         * @param {string} selectedEquipments - Comma-separated list of selected equipment IDs
-         */
-        loadObjectEquipments: function(objectId, selectedEquipments) {
-            if (!objectId) {
-                $('#edit_selected_equipment').empty();
-                return;
-            }
-
-            $.ajax({
-                type: 'POST',
-                url: 'plugins/geoloc/core/ajax/geoloc.ajax.php',
-                data: {
-                    action: 'getObjectEquipments',
-                    objectId: objectId
-                },
-                dataType: 'json',
-                error: function(request, status, error) {
-                    console.error('Error loading equipment list:', error);
-                    $('#edit_selected_equipment').empty();
-                },
-                success: function(data) {
-                    const $select = $('#edit_selected_equipment');
-                    $select.empty();
-
-                    if (data.state === 'ok' && data.result.length > 0) {
-                        const selectedIds = selectedEquipments ? selectedEquipments.split(',') : [];
-                        
-                        data.result.forEach(equipment => {
-                            const isSelected = selectedIds.includes(equipment.id.toString());
-                            $select.append(`<option value="${equipment.id}" ${isSelected ? 'selected' : ''}>${equipment.humanName}</option>`);
-                        });
-                    } else {
-                        $select.append('<option value="">Aucun équipement géolocalisable trouvé</option>');
-                    }
-                }
-            });
-        },
-
-        /**
-         * Get selected equipment IDs from the form
-         * Returns comma-separated list of selected equipment IDs or empty string for "show all"
-         * @returns {string} Comma-separated equipment IDs or empty string
-         */
-        getSelectedEquipments: function() {
-            if ($('#edit_show_all_equipment').is(':checked')) {
-                return '';
-            }
-            
-            const selectedValues = $('#edit_selected_equipment').val();
-            return Array.isArray(selectedValues) ? selectedValues.join(',') : '';
-        },
-
-        /**
          * Format equipment badge for table display
          * @param {string} selectedEquipments Comma-separated equipment IDs
          * @param {string|number} objectId Parent object ID
@@ -1454,39 +1398,52 @@ $(async function () {
         },
 
         /**
-         * Bind events for the add modal equipment selection
+         * Bind events for modal equipment selection (unified for both add and edit)
+         * @param {string} prefix - 'add' or 'edit'
          */
-        bindAddModalEvents: function() {
-            // Equipment selection management for add modal
-            $('#add_show_all_equipment').off('change').on('change', function () {
+        bindModalEvents: function(prefix) {
+            const objectSelectId = prefix === 'add' ? '#parentObject' : '#edit_parent_object';
+            
+            // Equipment selection management
+            $(`#${prefix}_show_all_equipment`).off('change').on('change', function () {
                 const showAll = $(this).is(':checked');
                 if (showAll) {
-                    $('#add_equipment_selection_container').hide();
+                    $(`#${prefix}_equipment_selection_container`).hide();
                 } else {
-                    $('#add_equipment_selection_container').show();
+                    $(`#${prefix}_equipment_selection_container`).show();
                     // Load equipment for current object if not already loaded
-                    const objectId = $('#parentObject').val();
+                    const objectId = $(objectSelectId).val();
                     if (objectId) {
-                        GeolocAdmin.Widgets.loadObjectEquipmentsForAddModal(objectId, '');
+                        GeolocAdmin.Widgets.loadObjectEquipmentsForModal(objectId, '', prefix);
                     }
                 }
             });
 
-            // Object parent change handler for equipment loading in add modal
-            $('#parentObject').off('change').on('change', function () {
+            // Object parent change handler for equipment loading
+            $(objectSelectId).off('change').on('change', function () {
                 const objectId = $(this).val();
-                if (!$('#add_show_all_equipment').is(':checked')) {
-                    GeolocAdmin.Widgets.loadObjectEquipmentsForAddModal(objectId, '');
+                if (!$(`#${prefix}_show_all_equipment`).is(':checked')) {
+                    GeolocAdmin.Widgets.loadObjectEquipmentsForModal(objectId, '', prefix);
                 }
             });
         },
 
         /**
-         * Load equipment list for add modal
+         * Bind events for the add modal (legacy wrapper)
          */
-        loadObjectEquipmentsForAddModal: function(objectId, selectedEquipments) {
+        bindAddModalEvents: function() {
+            this.bindModalEvents('add');
+        },
+
+        /**
+         * Load equipment list for modal (unified for both add and edit)
+         * @param {string|number} objectId - Parent object ID
+         * @param {string} selectedEquipments - Comma-separated equipment IDs
+         * @param {string} prefix - 'add' or 'edit'
+         */
+        loadObjectEquipmentsForModal: function(objectId, selectedEquipments, prefix) {
             if (!objectId) {
-                $('#add_selected_equipment').empty();
+                $(`#${prefix}_selected_equipment`).empty();
                 return;
             }
 
@@ -1499,11 +1456,11 @@ $(async function () {
                 },
                 dataType: 'json',
                 error: function(request, status, error) {
-                    console.error('Error loading equipment list for add modal:', error);
-                    $('#add_selected_equipment').empty();
+                    console.error(`Error loading equipment list for ${prefix} modal:`, error);
+                    $(`#${prefix}_selected_equipment`).empty();
                 },
                 success: function(data) {
-                    const $select = $('#add_selected_equipment');
+                    const $select = $(`#${prefix}_selected_equipment`);
                     $select.empty();
 
                     if (data.state === 'ok' && data.result.length > 0) {
@@ -1521,16 +1478,40 @@ $(async function () {
         },
 
         /**
-         * Get selected equipment IDs from the add modal form
+         * Load equipment list for add modal (legacy wrapper)
+         */
+        loadObjectEquipmentsForAddModal: function(objectId, selectedEquipments) {
+            this.loadObjectEquipmentsForModal(objectId, selectedEquipments, 'add');
+        },
+
+        /**
+         * Get selected equipment IDs from modal form (unified)
+         * @param {string} prefix - 'add' or 'edit'
          * @returns {string} Comma-separated equipment IDs or empty string
          */
-        getSelectedEquipmentsFromAddModal: function() {
-            if ($('#add_show_all_equipment').is(':checked')) {
+        getSelectedEquipmentsFromModal: function(prefix) {
+            if ($(`#${prefix}_show_all_equipment`).is(':checked')) {
                 return '';
             }
             
-            const selectedValues = $('#add_selected_equipment').val();
+            const selectedValues = $(`#${prefix}_selected_equipment`).val();
             return Array.isArray(selectedValues) ? selectedValues.join(',') : '';
+        },
+
+        /**
+         * Get selected equipment IDs from the add modal form (legacy wrapper)
+         * @returns {string} Comma-separated equipment IDs or empty string
+         */
+        getSelectedEquipmentsFromAddModal: function() {
+            return this.getSelectedEquipmentsFromModal('add');
+        },
+
+        /**
+         * Get selected equipment IDs from the edit modal form
+         * @returns {string} Comma-separated equipment IDs or empty string
+         */
+        getSelectedEquipments: function() {
+            return this.getSelectedEquipmentsFromModal('edit');
         }
     };
 
@@ -1787,28 +1768,8 @@ $(async function () {
                 GeolocAdmin.Widgets.saveWidgetChanges();
             });
 
-            // Equipment selection management
-            $('#edit_show_all_equipment').off('change').on('change', function () {
-                const showAll = $(this).is(':checked');
-                if (showAll) {
-                    $('#equipment_selection_container').hide();
-                } else {
-                    $('#equipment_selection_container').show();
-                    // Load equipment for current object if not already loaded
-                    const objectId = $('#edit_parent_object').val();
-                    if (objectId) {
-                        GeolocAdmin.Widgets.loadObjectEquipments(objectId, '');
-                    }
-                }
-            });
-
-            // Object parent change handler for equipment loading
-            $('#edit_parent_object').off('change').on('change', function () {
-                const objectId = $(this).val();
-                if (!$('#edit_show_all_equipment').is(':checked')) {
-                    GeolocAdmin.Widgets.loadObjectEquipments(objectId, '');
-                }
-            });
+            // Equipment selection management (using unified function)
+            GeolocAdmin.Widgets.bindModalEvents('edit');
 
             // Initialize tabs
             $('#geolocTabs a').click(function (e) {
