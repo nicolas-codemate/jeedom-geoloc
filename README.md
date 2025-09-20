@@ -60,13 +60,33 @@ L'interface du plugin est organisée en **deux onglets** :
 1. Accédez à l'onglet **"Widgets de carte"**
 2. Cliquez sur **"Créer un widget de carte"**
 3. Configurez les paramètres :
-   - **Nom du widget** : Nom affiché sur le dashboard
-   - **Objet parent** : Équipements de quel objet afficher
+   - **Nom du widget** : Nom affiché dans le titre du widget sur le dashboard
+   - **Objet parent** : Sélectionner l'objet dont afficher les équipements
    - **Hauteur** : Hauteur de la carte en pixels (200-800px)
    - **Largeur** : Largeur du widget
      - `Automatique` : S'adapte à l'espace disponible
      - `100% de largeur` : Prend toute la largeur disponible
      - `300px, 400px, 500px, 600px, 800px` : Tailles fixes
+
+### Sélection d'équipements
+
+Lors de la création ou modification d'un widget, vous pouvez choisir quels équipements afficher :
+
+#### **Afficher tous les équipements** (par défaut)
+- ✅ **Coché** : Affiche automatiquement tous les équipements géolocalisables de l'objet parent
+- Idéal pour des vues d'ensemble ou des objets contenant peu d'équipements
+
+#### **Sélection spécifique d'équipements**
+- ❌ **Décoché** : Permet de choisir précisément quels équipements afficher
+- Une liste déroulante multiple apparaît avec tous les équipements géolocalisables de l'objet parent
+- **Tri alphabétique** : Les équipements sont triés automatiquement par ordre alphabétique
+- **Sélection multiple** : Maintenez `Ctrl` (ou `Cmd` sur Mac) enfoncé pour sélectionner plusieurs équipements
+- **Pratique pour** :
+  - Créer des vues thématiques (ex: seulement les capteurs extérieurs)
+  - Réduire l'encombrement sur la carte
+  - Créer plusieurs widgets avec des focus différents
+
+> **💡 Astuce** : Après sélection de l'objet parent, la liste des équipements se met à jour automatiquement. Seuls les équipements possédant des commandes `latitude` et `longitude` valides apparaissent dans la liste.
 
 ### Gestion des widgets
 
@@ -74,26 +94,56 @@ Dans l'onglet **"Widgets de carte"**, vous disposez d'un tableau de gestion comp
 
 | Fonctionnalité | Description |
 |----------------|-------------|
-| **Modifier** | Éditer toutes les propriétés du widget |
-| **Supprimer** | Supprimer le widget avec confirmation |
-| **État** | Visualiser l'état (Actif/Masqué/Inactif) |
+| **Nom du widget** | Affiche le nom personnalisé du widget |
+| **Objet parent** | Indique l'objet source des équipements |
+| **Équipements** | Badge intelligent montrant le nombre et la liste des équipements sélectionnés |
+| **Dimensions** | Affichage des dimensions configurées (largeur × hauteur) |
+| **État** | Statut du widget (Actif/Masqué/Inactif) |
+| **Actions** | Boutons pour modifier ou supprimer le widget |
 
 ### Fonctionnalités des widgets
 
-Les widgets affichent automatiquement :
+#### **Affichage sur le dashboard**
+- **Titre personnalisé** : Le nom du widget apparaît dans l'en-tête
+- **Compteur d'équipements** : Badge dans le titre affichant le nombre d'équipements actifs
 - **Carte interactive** avec contrôles de zoom
-- **Marqueurs** pour chaque équipement géolocalisé
-- **Popups informatifs** au clic sur les marqueurs
+- **Marqueurs colorés** pour chaque équipement géolocalisé
+- **Adaptation automatique** de la vue pour inclure tous les marqueurs
+
+#### **Interactions et popups**
+- **Popups multiples** : Jusqu'à 5 équipements peuvent avoir leur popup ouverte simultanément pour une vue d'ensemble
+- **Informations détaillées** : Chaque popup affiche le nom complet et les coordonnées de l'équipement
+- **Accès à l'historique** : Bouton direct vers l'historique des positions depuis chaque popup
+- **Fermeture flexible** : Les popups restent ouvertes jusqu'à fermeture manuelle
+
+#### **Performances et mise à jour**
 - **Actualisation automatique** toutes les 60 secondes
-- **Compteur d'équipements** affiché en bas du widget
-- **Thème adaptatif** (clair/sombre)
+- **Chargement optimisé** : Seuls les équipements géolocalisables sont traités
+- **Gestion d'erreurs** : Affichage informatif en cas d'absence d'équipements
+
+#### **Thème et responsive**
+- **Thème adaptatif** : Support automatique des thèmes clair/sombre de Jeedom
+- **Design responsive** : Adaptation aux différentes tailles d'écran
+- **Animations fluides** : Transitions et effets visuels pour une meilleure expérience utilisateur
 
 ### Utilisation sur le dashboard
 
-1. Créez un ou plusieurs widgets via l'interface de gestion
-2. Les widgets apparaissent automatiquement sur le dashboard
-3. Chaque widget affiche les équipements de l'objet parent configuré
-4. La taille s'adapte selon les paramètres définis (hauteur/largeur)
+1. **Création** : Créez un ou plusieurs widgets via l'interface de gestion
+2. **Affichage automatique** : Les widgets apparaissent automatiquement sur le dashboard de Jeedom
+3. **Contenu personnalisé** : Chaque widget affiche :
+   - Les équipements de l'objet parent configuré (tous ou sélection spécifique)
+   - Le nom personnalisé du widget dans le titre
+   - Un badge indiquant le nombre d'équipements géolocalisés
+4. **Adaptation visuelle** : La taille et l'apparence s'adaptent selon :
+   - Les dimensions configurées (hauteur/largeur)
+   - Le thème actif de Jeedom (clair/sombre)
+   - L'espace disponible sur le dashboard
+
+#### **Exemples d'usage**
+- **Vue générale maison** : Widget "Tous mes équipements" affichant l'ensemble de la maison
+- **Surveillance extérieure** : Widget "Capteurs jardin" avec sélection des équipements outdoor
+- **Véhicules** : Widget "Trackers voitures" pour le suivi des véhicules familiaux
+- **Sécurité** : Widget "Détecteurs périmètre" pour les équipements de sécurité
 
 
 ### Créer un équipement géolocalisable
@@ -101,3 +151,23 @@ Les widgets affichent automatiquement :
 TODO
 - Ajouter un bouton pour créer un équipement géolocalisable directement depuis la carte.
 - Déterminer s'il s'agit d'un vrai équipement ou d'un équipement virtuel.
+
+## Améliorations récentes
+
+### ✅ Widgets de dashboard configurables
+- Interface de gestion dédiée avec onglet "Widgets de carte"
+- Création et modification de widgets personnalisés
+- Sélection fine des équipements à afficher (tous ou spécifique)
+- Dimensions configurables et thème adaptatif
+
+### ✅ Interface utilisateur améliorée
+- Titre personnalisé pour chaque widget
+- Badge compteur d'équipements proéminent
+- Tri alphabétique automatique des équipements
+- Popups multiples pour une meilleure vue d'ensemble (jusqu'à 5 simultanées)
+
+### ✅ Optimisations techniques
+- Refactorisation complète du code JavaScript
+- Gestion robuste des erreurs et états de chargement
+- Amélioration des performances et de la maintenabilité
+- Support complet des thèmes clair/sombre
