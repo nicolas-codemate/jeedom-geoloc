@@ -1466,7 +1466,12 @@ $(async function () {
                     if (data.state === 'ok' && data.result.length > 0) {
                         const selectedIds = selectedEquipments ? selectedEquipments.split(',') : [];
                         
-                        data.result.forEach(equipment => {
+                        // Sort equipment alphabetically by humanName
+                        const sortedEquipments = data.result.sort((a, b) => 
+                            a.humanName.localeCompare(b.humanName, 'fr', { numeric: true, ignorePunctuation: true })
+                        );
+                        
+                        sortedEquipments.forEach(equipment => {
                             const isSelected = selectedIds.includes(equipment.id.toString());
                             $select.append(`<option value="${equipment.id}" ${isSelected ? 'selected' : ''}>${equipment.humanName}</option>`);
                         });
