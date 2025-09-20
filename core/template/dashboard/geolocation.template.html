@@ -1,6 +1,7 @@
-<div class="eqLogic-widget geolocation-widget" data-eqlogic_id="#id#" data-version="dashboard" data-object-id="#object_id#" data-object-name="#object_name#" style="width: #width#;">
+<div class="eqLogic-widget geolocation-widget" data-eqlogic_id="#id#" data-version="dashboard" data-object-id="#object_id#" data-object-name="#object_name#" data-widget-name="#name#" data-selected-equipments="#selectedEquipments#" style="width: #width#;">
     <div class="widget-title">
-        <span class="widget-name">#object_name# - Géolocalisation</span>
+        <span class="widget-name">#name#</span>
+        <span class="equipment-count" id="equipmentCount_#id#">0 équipement(s)</span>
     </div>
     <div class="widget-body">
         <div id="geolocMap_#id#" class="geolocation-map" style="height: #height#px; width: 100%; min-height: 200px;">
@@ -8,9 +9,6 @@
                 <i class="fa fa-spinner fa-spin"></i>
                 <span>Chargement de la carte...</span>
             </div>
-        </div>
-        <div class="widget-info">
-            <span class="equipment-count" id="equipmentCount_#id#">0 équipement(s)</span>
         </div>
     </div>
 </div>
