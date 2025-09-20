@@ -17,6 +17,256 @@
 
 include(__DIR__.'/../class/GeolocalisableEquipment.php');
 
+/**
+ * Handler class for geolocation AJAX requests
+ * Centralizes all AJAX logic with proper separation of concerns
+ */
+class GeolocAjaxHandler
+{
+    /**
+     * Execute the requested action
+     * @param string $action The action to execute
+     * @throws Exception If action is not supported
+     */
+    public function execute(string $action): void
+    {
+        switch ($action) {
+            case 'getEquipments':
+                $this->handleGetEquipments();
+                break;
+            case 'getEquipmentsByName':
+                $this->handleGetEquipmentsByName();
+                break;
+            case 'getEquipmentById':
+                $this->handleGetEquipmentById();
+                break;
+            case 'addGeolocation':
+                $this->handleAddGeolocation();
+                break;
+            case 'getGeolocationHistory':
+                $this->handleGetGeolocationHistory();
+                break;
+            case 'getObjectEquipments':
+                $this->handleGetObjectEquipments();
+                break;
+            default:
+                throw new RuntimeException(__('Aucune méthode correspondante à', __FILE__).' : '.$action);
+        }
+    }
+
+    /**
+     * Check if user has access to an equipment
+     * @param eqLogic $eqLogic Equipment to check
+     * @throws Exception If access is denied
+     */
+    private function checkEquipmentAccess(eqLogic $eqLogic): void
+    {
+        $eqObject = $eqLogic->getObject();
+        if ($eqObject && !$eqObject->hasRight('r')) {
+            throw new Exception(__('401 - Accès non autorisé à cet équipement', __FILE__));
+        }
+    }
+
+    /**
+     * Check if user has access to an object
+     * @param jeeObject $object Object to check
+     * @throws Exception If access is denied
+     */
+    private function checkObjectAccess(jeeObject $object): void
+    {
+        if (!$object->hasRight('r')) {
+            throw new Exception(__('401 - Accès non autorisé à cet objet', __FILE__));
+        }
+    }
+
+    /**
+     * Get parent object by ID or root object
+     * @param string|null $parentObjectId Object ID or null for root
+     * @return jeeObject The parent object
+     * @throws Exception If object not found or access denied
+     */
+    private function getParentObject(?string $parentObjectId): jeeObject
+    {
+        if (empty($parentObjectId)) {
+            return jeeObject::rootObject(false, true);
+        }
+
+        $parentObject = jeeObject::byId($parentObjectId);
+        if (null === $parentObject) {
+            throw new Exception(__('Objet parent introuvable', __FILE__));
+        }
+
+        $this->checkObjectAccess($parentObject);
+        return $parentObject;
+    }
+
+    /**
+     * Get equipment by ID with access check
+     * @param string $eqLogicId Equipment ID
+     * @return eqLogic The equipment
+     * @throws Exception If equipment not found or access denied
+     */
+    private function getEquipmentById(string $eqLogicId): eqLogic
+    {
+        $eqLogic = eqLogic::byId($eqLogicId);
+        if (!$eqLogic) {
+            throw new Exception(__('Équipement introuvable', __FILE__));
+        }
+
+        $this->checkEquipmentAccess($eqLogic);
+        return $eqLogic;
+    }
+
+    /**
+     * Handle getEquipments action
+     */
+    private function handleGetEquipments(): void
+    {
+        $parentObjectId = init('parentObjectId');
+        $eqLogics = eqLogic::all(true);
+        $parentObject = $this->getParentObject($parentObjectId);
+        $objects = buildTree($parentObject, $eqLogics);
+        ajax::success($objects);
+    }
+
+    /**
+     * Handle getEquipmentsByName action
+     */
+    private function handleGetEquipmentsByName(): void
+    {
+        $eqName = init('name');
+        $eqLogics = eqLogic::searchByString($eqName);
+        
+        if (!$eqLogics) {
+            ajax::success([]);
+            return;
+        }
+
+        $foundEquipments = [];
+        foreach ($eqLogics as $eqLogic) {
+            $foundEquipments[] = new GeolocalisableEquipment($eqLogic);
+        }
+
+        ajax::success($foundEquipments);
+    }
+
+    /**
+     * Handle getEquipmentById action
+     */
+    private function handleGetEquipmentById(): void
+    {
+        $eqLogicId = init('eqLogicId');
+        $getHistory = init('getHistory', false);
+        $startDate = init('startDate', null);
+        $endDate = init('endDate', null);
+
+        if ($startDate) {
+            $startDate = new DateTime($startDate);
+        }
+
+        if ($endDate) {
+            $endDate = new DateTime($endDate);
+            $endDate->add(new DateInterval('P1D'));
+        }
+
+        $eqLogic = $this->getEquipmentById($eqLogicId);
+        $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+
+        if ($getHistory) {
+            $geolocalisableEquipment->buildCoordinateHistory($startDate, $endDate);
+        }
+
+        ajax::success($geolocalisableEquipment);
+    }
+
+    /**
+     * Handle addGeolocation action
+     */
+    private function handleAddGeolocation(): void
+    {
+        $eqLogicId = init('eqLogicId');
+        $latitude = init('latitude');
+        $longitude = init('longitude');
+
+        $eqLogic = $this->getEquipmentById($eqLogicId);
+
+        DB::beginTransaction();
+
+        $cmdLatitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LATITUDE_CMD_NAME);
+        if (!$cmdLatitude) {
+            $cmdLatitude = geolocCmd::build($eqLogic, geolocCmd::LATITUDE_CMD_NAME);
+        }
+
+        $cmdLongitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
+        if (!$cmdLongitude) {
+            $cmdLongitude = geolocCmd::build($eqLogic, geolocCmd::LONGITUDE_CMD_NAME);
+        }
+
+        $cmdLatitude->event($latitude);
+        $cmdLongitude->event($longitude);
+
+        DB::commit();
+
+        $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+        ajax::success($geolocalisableEquipment);
+    }
+
+    /**
+     * Handle getGeolocationHistory action
+     */
+    private function handleGetGeolocationHistory(): void
+    {
+        $eqLogicId = init('eqLogicId');
+        $eqLogic = $this->getEquipmentById($eqLogicId);
+        
+        $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+        $geolocalisableEquipment->buildCoordinateHistory();
+
+        ajax::success($geolocalisableEquipment->getCoordinateHistory());
+    }
+
+    /**
+     * Handle getObjectEquipments action
+     */
+    private function handleGetObjectEquipments(): void
+    {
+        $objectId = init('objectId');
+        
+        if (!$objectId) {
+            ajax::error(__('ID de l\'objet requis', __FILE__));
+            return;
+        }
+        
+        $object = jeeObject::byId($objectId);
+        if (!$object) {
+            ajax::error(__('Objet introuvable', __FILE__));
+            return;
+        }
+        
+        $this->checkObjectAccess($object);
+        
+        $eqLogics = eqLogic::byObjectId($objectId, true);
+        $geolocalisableEquipments = [];
+        
+        foreach ($eqLogics as $eqLogic) {
+            if (!$eqLogic->hasRight('r')) {
+                continue;
+            }
+            
+            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+            if ($geolocalisableEquipment->hasCoordinate()) {
+                $geolocalisableEquipments[] = [
+                    'id' => $eqLogic->getId(),
+                    'name' => $eqLogic->getName(),
+                    'humanName' => $eqLogic->getHumanName()
+                ];
+            }
+        }
+        
+        ajax::success($geolocalisableEquipments);
+    }
+}
+
 function buildTree(jeeObject $parentObject, array $eqLogics): array
 {
     $items = buildGeolocalisableItems($parentObject, $eqLogics);
@@ -90,150 +340,9 @@ try {
         throw new Exception(__('401 - Droits administrateur requis pour cette action', __FILE__));
     }
 
-    switch ($action) {
-        case "getEquipments":
-        {
-            $parentObjectId = init('parentObjectId');
-
-            $eqLogics = eqLogic::all(true);
-
-            if (empty($parentObjectId)) {
-                /** @var jeeObject $parentObject */
-                $parentObject = jeeObject::rootObject(false, true);
-            } else {
-                /** @var jeeObject $parentObject */
-                $parentObject = jeeObject::byId($parentObjectId);
-                if (null === $parentObject) {
-                    ajax::success([]);
-                }
-                
-                // Check if user has access to this object
-                if (!$parentObject->hasRight('r')) {
-                    throw new Exception(__('401 - Accès non autorisé à cet objet', __FILE__));
-                }
-            }
-
-            $objects = buildTree($parentObject, $eqLogics);
-
-            ajax::success($objects);
-
-            return;
-        }
-        case "getEquipmentsByName":
-        {
-            $eqName = init('name');
-
-            /** @var eqLogic[] $eqLogics */
-            $eqLogics = eqLogic::searchByString($eqName);
-            if (!$eqLogics) {
-                ajax::success([]);
-            }
-
-            $foundEquipments = [];
-
-            foreach ($eqLogics as $eqLogic) {
-                $foundEquipments[] = new GeolocalisableEquipment($eqLogic);
-            }
-
-            ajax::success($foundEquipments);
-
-            return;
-        }
-        case "getEquipmentById":
-        {
-            $eqLogicId = init('eqLogicId');
-            $getHistory = init('getHistory', false);
-            $startDate = init('startDate', null);
-            $endDate = init('endDate', null);
-
-            if ($startDate) {
-                $startDate = new DateTime($startDate);
-            }
-
-            if ($endDate) {
-                $endDate = new DateTime($endDate);
-                $endDate->add(new DateInterval('P1D')); // the query SQL don't manage the time, so we need to add one day to the end date
-            }
-
-            /** @var eqLogic|null $eqLogic */
-            $eqLogic = eqLogic::byId($eqLogicId);
-            if (!$eqLogic) {
-                ajax::error(__('Équipement introuvable', __FILE__));
-            }
-
-            // Check if user has access to this equipment's object
-            $eqObject = $eqLogic->getObject();
-            if ($eqObject && !$eqObject->hasRight('r')) {
-                throw new Exception(__('401 - Accès non autorisé à cet équipement', __FILE__));
-            }
-
-            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
-
-            if ($getHistory) {
-                $geolocalisableEquipment->buildCoordinateHistory($startDate, $endDate);
-            }
-
-            ajax::success($geolocalisableEquipment);
-
-            return;
-        }
-        case "addGeolocation":
-        {
-            $eqLogicId = init('eqLogicId');
-            $latitude = init('latitude');
-            $longitude = init('longitude');
-
-            /** @var eqLogic|null $eqLogic */
-            $eqLogic = eqLogic::byId($eqLogicId);
-            if (!$eqLogicId) {
-                ajax::error(__('Équipement introuvable', __FILE__));
-            }
-
-            DB::beginTransaction();
-
-            // first check if the command already exists
-            // otherwise create it
-
-            /** @var cmd|null $cmdLatitude */
-            $cmdLatitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LATITUDE_CMD_NAME);
-            if (!$cmdLatitude) {
-                $cmdLatitude = geolocCmd::build($eqLogic, geolocCmd::LATITUDE_CMD_NAME);
-            }
-
-            /** @var cmd|null $cmdLongitude */
-            $cmdLongitude = cmd::byEqLogicIdCmdName($eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
-
-            if (!$cmdLongitude) {
-                $cmdLongitude = geolocCmd::build($eqLogic, geolocCmd::LONGITUDE_CMD_NAME);
-            }
-
-            $cmdLatitude->event($latitude);
-            $cmdLongitude->event($longitude);
-
-            DB::commit();
-
-            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
-
-            ajax::success($geolocalisableEquipment);
-        }
-        case "getGeolocationHistory": {
-            $eqLogicId = init('eqLogicId');
-
-            /** @var eqLogic|null $eqLogic */
-            $eqLogic = eqLogic::byId($eqLogicId);
-            if (null === $eqLogicId) {
-                ajax::error(__('Équipement introuvable', __FILE__));
-            }
-
-            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
-            $geolocalisableEquipment->buildCoordinateHistory();
-
-            ajax::success($geolocalisableEquipment->getCoordinateHistory());
-
-        }
-        default:
-            throw new RuntimeException(__('Aucune méthode correspondante à', __FILE__).' : '.$action);
-    }
+    // Use the new handler class
+    $handler = new GeolocAjaxHandler();
+    $handler->execute($action);
 } catch (Exception $e) {
     ajax::error(displayException($e), $e->getCode());
 }

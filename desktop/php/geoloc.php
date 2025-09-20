@@ -1,6 +1,49 @@
 <?php
 
-include_once __DIR__.'/../../core/class/Coordinate.php';
+include_once __DIR__.'/../../core/class/GeolocalisableEquipment.php';
+
+/**
+ * Generate equipment badge HTML for widget table
+ * @param string $selectedEquipments Comma-separated equipment IDs
+ * @param int $parentObjectId Parent object ID
+ * @return string HTML badge
+ */
+function generateEquipmentBadge($selectedEquipments, $parentObjectId) {
+    if (empty($selectedEquipments)) {
+        return '<span class="label label-default">Tous</span>';
+    }
+    
+    $equipmentIds = explode(',', $selectedEquipments);
+    $equipmentNames = [];
+    
+    foreach ($equipmentIds as $equipmentId) {
+        $equipmentId = trim($equipmentId);
+        if (empty($equipmentId)) continue;
+        
+        $eqLogic = eqLogic::byId($equipmentId);
+        if ($eqLogic) {
+            $geolocEquipment = new GeolocalisableEquipment($eqLogic);
+            if ($geolocEquipment->hasCoordinate()) {
+                $equipmentNames[] = $eqLogic->getHumanName();
+            }
+        }
+    }
+    
+    if (empty($equipmentNames)) {
+        return '<span class="label label-warning">Aucun équipement valide</span>';
+    }
+    
+    $count = count($equipmentNames);
+    $tooltip = '• ' . implode('<br>• ', $equipmentNames);
+    
+    return '<span class="label label-info equipment-badge" 
+                  data-toggle="tooltip" 
+                  data-placement="top" 
+                  data-html="true"
+                  title="' . htmlspecialchars($tooltip) . '">' 
+                  . $count . ' équipement' . ($count > 1 ? 's' : '') . 
+           '</span>';
+}
 
 if (!isConnect('admin')) {
     throw new Exception('{{401 - Accès non autorisé}}');
@@ -114,6 +157,7 @@ sendVarToJS('eqType', $plugin->getId());
                                 <tr>
                                     <th>{{Nom du widget}}</th>
                                     <th>{{Objet parent}}</th>
+                                    <th>{{Équipements}}</th>
                                     <th>{{Dimensions}}</th>
                                     <th>{{État}}</th>
                                     <th>{{Actions}}</th>
@@ -127,14 +171,16 @@ sendVarToJS('eqType', $plugin->getId());
                                     $parentObjectName = $parentObject ? $parentObject->getName() : 'Aucun';
                                     $height = $widget->getConfiguration('height', 300);
                                     $width = $widget->getConfiguration('width', 'auto');
+                                    $selectedEquipments = $widget->getConfiguration('selectedEquipments', '');
                                     $isEnabled = $widget->getIsEnable();
                                     $isVisible = $widget->getIsVisible();
                                     
                                     echo '<tr data-widget-id="'.$widget->getId().'">';
-                                    echo '<td>'.$widget->getName().'</td>';
-                                    echo '<td>'.$parentObjectName.'</td>';
-                                    echo '<td>'.$width.' × '.$height.'px</td>';
-                                    echo '<td>';
+                                    echo '<td id="widget-name-'.$widget->getId().'">'.$widget->getName().'</td>';
+                                    echo '<td id="widget-object-'.$widget->getId().'">'.$parentObjectName.'</td>';
+                                    echo '<td id="widget-equipment-'.$widget->getId().'">'.generateEquipmentBadge($selectedEquipments, $parentObject ? $parentObject->getId() : null).'</td>';
+                                    echo '<td id="widget-dimensions-'.$widget->getId().'">'.$width.' × '.$height.'px</td>';
+                                    echo '<td id="widget-status-'.$widget->getId().'">';
                                     if ($isEnabled && $isVisible) {
                                         echo '<span class="label label-success">Actif</span>';
                                     } elseif ($isEnabled && !$isVisible) {
@@ -227,6 +273,22 @@ sendVarToJS('eqType', $plugin->getId());
                                 <label>
                                     <input type="checkbox" name="is_visible" id="edit_is_visible"> {{Visible}}
                                 </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>{{Sélection des équipements}}</label>
+                            <div class="checkbox" style="margin-bottom: 10px;">
+                                <label>
+                                    <input type="checkbox" name="show_all_equipment" id="edit_show_all_equipment" checked> {{Afficher tous les équipements de l'objet parent}}
+                                </label>
+                            </div>
+                            <div id="edit_equipment_selection_container" style="display: none;">
+                                <label for="edit_selected_equipment">{{Équipements sélectionnés}}</label>
+                                <select multiple class="form-control" name="selected_equipment" id="edit_selected_equipment" size="6">
+                                    <!-- Options will be populated by JavaScript -->
+                                </select>
+                                <small class="help-block">{{Maintenez Ctrl (Cmd sur Mac) enfoncé pour sélectionner plusieurs équipements}}</small>
                             </div>
                         </div>
                     </form>
