@@ -1088,16 +1088,16 @@ $(async function () {
                 statusHtml = '<span class="label label-danger">Inactif</span>';
             }
             
-            // Create row with placeholder for equipment badge
+            // Create row with placeholder for equipment badge and proper IDs
             const newRow = `
                 <tr data-widget-id="${widget.id}">
-                    <td>${widget.name}</td>
-                    <td>${objectName}</td>
-                    <td class="equipment-cell">
+                    <td id="widget-name-${widget.id}">${widget.name}</td>
+                    <td id="widget-object-${widget.id}">${objectName}</td>
+                    <td id="widget-equipment-${widget.id}">
                         <span class="label label-secondary">Chargement...</span>
                     </td>
-                    <td>${width} × ${height}px</td>
-                    <td>${statusHtml}</td>
+                    <td id="widget-dimensions-${widget.id}">${width} × ${height}px</td>
+                    <td id="widget-status-${widget.id}">${statusHtml}</td>
                     <td>
                         <a class="btn btn-default btn-xs widget-action" data-action="edit" data-widget-id="${widget.id}" title="Modifier">
                             <i class="fas fa-pencil-alt"></i>
@@ -1112,22 +1112,22 @@ $(async function () {
             $('#widgetsTable tbody').append(newRow);
             
             // Load equipment badge asynchronously
-            const $newRow = $(`tr[data-widget-id="${widget.id}"]`);
             GeolocAdmin.Widgets.formatEquipmentBadge(selectedEquipments, widget.object_id)
                 .then(badgeHtml => {
-                    $newRow.find('.equipment-cell').html(badgeHtml);
+                    $(`#widget-equipment-${widget.id}`).html(badgeHtml);
                     // Initialize Bootstrap tooltips
-                    $newRow.find('[data-toggle="tooltip"]').tooltip();
+                    $(`#widget-equipment-${widget.id} [data-toggle="tooltip"]`).tooltip();
                 });
             
             // Bind events for the new row
+            const $newRow = $(`tr[data-widget-id="${widget.id}"]`);
             $newRow.find('.widget-action[data-action=edit]').on('click', function () {
                 const widgetId = $(this).data('widget-id');
                 GeolocAdmin.Widgets.initEditWidgetModal(widgetId);
             });
             $newRow.find('.widget-action[data-action=remove]').on('click', function () {
                 const widgetId = $(this).data('widget-id');
-                const widgetName = $(this).closest('tr').find('td:first').text();
+                const widgetName = $(`#widget-name-${widgetId}`).text();
                 GeolocAdmin.Widgets.removeWidget(widgetId, widgetName);
             });
         },
@@ -1252,7 +1252,6 @@ $(async function () {
             if ($row.length === 0) return;
             
             // Update the row data
-            const widgetId = formData.id;
             $(`#widget-name-${widgetId}`).text(formData.name); // Name
             
             // Get object name for display
