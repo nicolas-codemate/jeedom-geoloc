@@ -176,11 +176,11 @@ sendVarToJS('eqType', $plugin->getId());
                                     $isVisible = $widget->getIsVisible();
                                     
                                     echo '<tr data-widget-id="'.$widget->getId().'">';
-                                    echo '<td>'.$widget->getName().'</td>';
-                                    echo '<td>'.$parentObjectName.'</td>';
-                                    echo '<td>'.generateEquipmentBadge($selectedEquipments, $parentObject ? $parentObject->getId() : null).'</td>';
-                                    echo '<td>'.$width.' × '.$height.'px</td>';
-                                    echo '<td>';
+                                    echo '<td id="widget-name-'.$widget->getId().'">'.$widget->getName().'</td>';
+                                    echo '<td id="widget-object-'.$widget->getId().'">'.$parentObjectName.'</td>';
+                                    echo '<td id="widget-equipment-'.$widget->getId().'">'.generateEquipmentBadge($selectedEquipments, $parentObject ? $parentObject->getId() : null).'</td>';
+                                    echo '<td id="widget-dimensions-'.$widget->getId().'">'.$width.' × '.$height.'px</td>';
+                                    echo '<td id="widget-status-'.$widget->getId().'">';
                                     if ($isEnabled && $isVisible) {
                                         echo '<span class="label label-success">Actif</span>';
                                     } elseif ($isEnabled && !$isVisible) {

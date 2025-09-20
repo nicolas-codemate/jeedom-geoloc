@@ -1,6 +1,9 @@
 // Geolocation Dashboard Widget JavaScript
 // Read-only mode for dashboard visualization
 
+// Configuration constants
+const MAX_AUTO_OPEN_POPUPS = 5;
+
 window.geolocWidgetInstances = window.geolocWidgetInstances || {};
 
 /**
@@ -222,8 +225,8 @@ function processEquipments(widget, data) {
         marker.addTo(widget.map);
         widget.markers.push(marker);
         
-        // Auto-open popups for up to 5 equipments
-        if (validEquipments.length <= 5) {
+        // Auto-open popups for up to MAX_AUTO_OPEN_POPUPS equipments
+        if (validEquipments.length <= MAX_AUTO_OPEN_POPUPS) {
             setTimeout(() => {
                 marker.openPopup();
             }, 300 + (index * 100)); // Stagger popup opening

@@ -1252,16 +1252,17 @@ $(async function () {
             if ($row.length === 0) return;
             
             // Update the row data
-            $row.find('td:eq(0)').text(formData.name); // Name
+            const widgetId = formData.id;
+            $(`#widget-name-${widgetId}`).text(formData.name); // Name
             
             // Get object name for display
             const objectName = formData.object_id ? 
                 $(`#edit_parent_object option[value="${formData.object_id}"]`).text() : 
                 'Aucun';
-            $row.find('td:eq(1)').text(objectName); // Object parent
+            $(`#widget-object-${widgetId}`).text(objectName); // Object parent
             
-            // Update equipment badge (column 2)
-            const $equipmentCell = $row.find('td:eq(2)');
+            // Update equipment badge
+            const $equipmentCell = $(`#widget-equipment-${widgetId}`);
             $equipmentCell.html('<span class="label label-secondary">Mise à jour...</span>');
             GeolocAdmin.Widgets.formatEquipmentBadge(formData.configuration.selectedEquipments, formData.object_id)
                 .then(badgeHtml => {
@@ -1270,10 +1271,10 @@ $(async function () {
                     $equipmentCell.find('[data-toggle="tooltip"]').tooltip();
                 });
             
-            $row.find('td:eq(3)').text(formData.configuration.width + ' × ' + formData.configuration.height + 'px'); // Dimensions
+            $(`#widget-dimensions-${widgetId}`).text(formData.configuration.width + ' × ' + formData.configuration.height + 'px'); // Dimensions
             
-            // Update status (column 4)
-            const $statusCell = $row.find('td:eq(4)');
+            // Update status
+            const $statusCell = $(`#widget-status-${widgetId}`);
             $statusCell.empty();
             if (formData.isEnable && formData.isVisible) {
                 $statusCell.html('<span class="label label-success">Actif</span>');
