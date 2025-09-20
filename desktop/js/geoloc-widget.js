@@ -217,10 +217,17 @@ function processEquipments(widget, data) {
     }
 
     // Add markers to map
-    validEquipments.forEach(equipment => {
+    validEquipments.forEach((equipment, index) => {
         const marker = createMarker(equipment);
         marker.addTo(widget.map);
         widget.markers.push(marker);
+        
+        // Auto-open popups for up to 5 equipments
+        if (validEquipments.length <= 5) {
+            setTimeout(() => {
+                marker.openPopup();
+            }, 300 + (index * 100)); // Stagger popup opening
+        }
     });
 
     // Adjust view to include all markers
@@ -243,15 +250,18 @@ function createMarker(equipment) {
         color: 'blue'
     });
 
-    // Popup with history action for widgets (no update position)
+    // Configure popup for multiple simultaneous display
     const popupContent = GeolocCommon.MarkerFactory.createPopupContent(equipment, {
         showActions: true,
         showUpdateAction: false
     });
 
+    // Configure popup to allow multiple simultaneous display
     marker.bindPopup(popupContent, {
         className: 'geoloc-widget-popup',
-        maxWidth: 250
+        maxWidth: 250,
+        autoClose: false,  // Don't auto-close when another popup opens
+        closeOnClick: false  // Don't close when clicking on map
     });
 
     // Add event handler for popup actions
@@ -323,7 +333,13 @@ function showEquipmentHistory(eqLogicId) {
 function updateEquipmentCount(widgetId, count) {
     const countElement = document.getElementById(`equipmentCount_${widgetId}`);
     if (countElement) {
-        countElement.textContent = `${count} équipement(s) géolocalisé(s)`;
+        countElement.textContent = `${count} équipement(s)`;
+        
+        // Add visual emphasis with a subtle animation when count changes
+        countElement.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            countElement.style.transform = 'scale(1)';
+        }, 200);
     }
 }
 
