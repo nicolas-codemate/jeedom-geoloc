@@ -13,15 +13,19 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="plugins/geoloc/desktop/css/geolocation.css">
-<script src="plugins/geoloc/desktop/js/geoloc-shared.js"></script>
-<script src="plugins/geoloc/desktop/js/geoloc-widget.js"></script>
-<script>
-$(document).ready(function() {
+<link rel="stylesheet" href="plugins/geoloc/desktop/css/geolocation.css?v=1.2">
+<script type="text/javascript">
+$.include([
+    'plugins/geoloc/desktop/css/leaflet.css',
+    'plugins/geoloc/desktop/js/leaflet.js',
+    'plugins/geoloc/desktop/js/leaflet-ant-path.js',
+    'plugins/geoloc/desktop/js/geoloc-shared.js',
+    'plugins/geoloc/desktop/js/geoloc-widget.js'
+], function() {
     if (typeof initGeolocWidget === 'function') {
         initGeolocWidget('#id#', '#object_id#', '#object_name#');
     } else {
-        console.warn('Geolocation widget script not loaded');
+        console.warn('initGeolocWidget function not found for widget #id#');
     }
 });
 </script>
