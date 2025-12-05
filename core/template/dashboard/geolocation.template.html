@@ -10,6 +10,31 @@
                 <span>Chargement de la carte...</span>
             </div>
         </div>
+        <!-- Control Panel Toggle Button -->
+        <div class="geoloc-control-toggle" id="controlToggle_#id#" title="Afficher/Masquer le panneau de selection">
+            <i class="fa fa-list"></i>
+        </div>
+        <!-- Control Panel Overlay -->
+        <div class="geoloc-control-panel" id="controlPanel_#id#" style="display: none;">
+            <div class="control-panel-header">
+                <span>Equipements</span>
+                <button class="control-panel-close" data-widget-id="#id#">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="control-panel-actions">
+                <button class="btn btn-xs btn-default" id="checkAll_#id#">Tout cocher</button>
+                <button class="btn btn-xs btn-default" id="uncheckAll_#id#">Tout decocher</button>
+            </div>
+            <div class="control-panel-list" id="equipmentList_#id#">
+                <!-- Equipment checkboxes populated by JavaScript -->
+            </div>
+            <div class="control-panel-footer" id="controlPanelFooter_#id#" style="display: none;">
+                <button class="btn btn-primary btn-sm" id="multiHistoryBtn_#id#">
+                    <i class="fa fa-history"></i> Historique
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
