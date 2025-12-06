@@ -110,6 +110,8 @@ final class GeolocalisableEquipment implements JsonSerializable
         $cmdLongitude = cmd::byEqLogicIdCmdName($this->eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
 
         if ('1' !== $cmdLongitude->getIsHistorized() || '1' !== $cmdLatitude->getIsHistorized()) {
+            // If not historized, still add current position if date range includes today
+            $this->addCurrentPositionIfInRange($endDate);
             return;
         }
 
@@ -156,6 +158,30 @@ final class GeolocalisableEquipment implements JsonSerializable
             $this->coordinateHistory[] = new CoordinateHistory(
                 new Coordinate($history[$longitudeDate->getTimestamp()]['latitude'], $historyValue->getValue()),
                 $longitudeDate
+            );
+        }
+
+        // Add current position as a history point if date range includes today
+        $this->addCurrentPositionIfInRange($endDate);
+    }
+
+    /**
+     * Add current position as a history point if the end date includes today
+     */
+    private function addCurrentPositionIfInRange(?DateTime $endDate): void
+    {
+        if (null === $this->coordinate) {
+            return;
+        }
+
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
+
+        // Add current position if endDate is null (no filter) or endDate >= today
+        if (null === $endDate || $endDate >= $today) {
+            $this->coordinateHistory[] = new CoordinateHistory(
+                $this->coordinate,
+                new DateTime()
             );
         }
     }

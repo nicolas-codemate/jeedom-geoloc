@@ -934,7 +934,7 @@ GeolocCommon.MultiVehicleHistoryModal = {
     /**
      * Show multi-vehicle history modal
      * @param {Array} equipmentIds - Array of equipment IDs to show history for
-     * @param {Object} options - Modal options
+     * @param {Object} options - Modal options (context, equipments)
      */
     show: function(equipmentIds, options = {}) {
         if (!equipmentIds || equipmentIds.length === 0) {
@@ -956,8 +956,8 @@ GeolocCommon.MultiVehicleHistoryModal = {
         $(`#${modalId}`).remove();
         $('body').append(modalHTML);
 
-        // Initialize modal
-        this.initializeModal(modalId, mapId, equipmentIds, startDate, endDate);
+        // Initialize modal with optional equipments for initial centering
+        this.initializeModal(modalId, mapId, equipmentIds, startDate, endDate, options.equipments);
 
         // Show modal
         $(`#${modalId}`).modal('show');
@@ -1040,9 +1040,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1056,15 +1053,34 @@ GeolocCommon.MultiVehicleHistoryModal = {
      * @param {Array} equipmentIds - Array of equipment IDs
      * @param {Date} startDate - Initial start date
      * @param {Date} endDate - Initial end date
+     * @param {Array} equipments - Optional array of equipment objects with current positions
      */
-    initializeModal: function(modalId, mapId, equipmentIds, startDate, endDate) {
+    initializeModal: function(modalId, mapId, equipmentIds, startDate, endDate, equipments) {
         // Store equipment IDs for refresh
         this._currentEquipmentIds = equipmentIds;
 
-        // Create map
+        // Calculate initial center from equipment current positions
+        let initialCenter = GeolocCommon.Config.DEFAULT_CENTER;
+        let initialZoom = GeolocCommon.Config.DEFAULT_ZOOM;
+
+        if (equipments && equipments.length > 0) {
+            const validPositions = equipments
+                .filter(eq => eq.latitude && eq.longitude)
+                .map(eq => [parseFloat(eq.latitude), parseFloat(eq.longitude)]);
+
+            if (validPositions.length > 0) {
+                // Calculate center point
+                const sumLat = validPositions.reduce((sum, pos) => sum + pos[0], 0);
+                const sumLng = validPositions.reduce((sum, pos) => sum + pos[1], 0);
+                initialCenter = [sumLat / validPositions.length, sumLng / validPositions.length];
+                initialZoom = 10; // Closer zoom when we have positions
+            }
+        }
+
+        // Create map centered on current positions
         window.geolocMultiHistoryMap = GeolocCommon.MapManager.createMap(mapId, {
-            center: GeolocCommon.Config.DEFAULT_CENTER,
-            zoom: GeolocCommon.Config.DEFAULT_ZOOM
+            center: initialCenter,
+            zoom: initialZoom
         });
 
         // Load histories
@@ -1143,7 +1159,7 @@ GeolocCommon.MultiVehicleHistoryModal = {
             }
         });
 
-        const allCoordinates = [];
+        const allCurrentPositions = []; // Current positions for map centering
         let legendHtml = '';
         let totalPoints = 0;
 
@@ -1171,6 +1187,11 @@ GeolocCommon.MultiVehicleHistoryModal = {
                 return; // Skip equipment with no history
             }
 
+            // Collect current position for map centering
+            if (equipment.latitude && equipment.longitude) {
+                allCurrentPositions.push([parseFloat(equipment.latitude), parseFloat(equipment.longitude)]);
+            }
+
             totalPoints += validHistory.length;
 
             // Extract coordinates
@@ -1180,9 +1201,7 @@ GeolocCommon.MultiVehicleHistoryModal = {
                 return [parseFloat(lat), parseFloat(lng)];
             });
 
-            allCoordinates.push(...latLngs);
-
-            // Add current position marker with equipment color
+            // Add current position marker
             if (equipment.latitude && equipment.longitude) {
                 const currentLatLng = [parseFloat(equipment.latitude), parseFloat(equipment.longitude)];
                 const currentMarker = L.marker(currentLatLng, {
@@ -1259,11 +1278,13 @@ GeolocCommon.MultiVehicleHistoryModal = {
         // Hide loading overlay
         $(`#${mapId} .loading-overlay`).hide();
 
-        // Fit map to show all trajectories
-        if (allCoordinates.length > 0) {
-            GeolocCommon.HistoryModal.fitMapToCoordinates(map, allCoordinates);
-        } else {
-            // No data - show message
+        // Fit map to show all current positions
+        if (allCurrentPositions.length > 0) {
+            GeolocCommon.HistoryModal.fitMapToCoordinates(map, allCurrentPositions);
+        }
+
+        // Show message if no history data
+        if (totalPoints === 0) {
             legendContainer.append(`
                 <div class="alert alert-info" style="margin-top: 10px;">
                     <i class="fa fa-info-circle"></i> Aucune donnee d'historique pour cette periode

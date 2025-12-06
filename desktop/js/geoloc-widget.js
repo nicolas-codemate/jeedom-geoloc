@@ -539,8 +539,14 @@ function showMultiVehicleHistory(widget) {
         return;
     }
 
+    // Get selected equipments with their current positions
+    const selectedEquipments = widget.equipments.filter(eq =>
+        widget.selectedEquipmentIds.includes(parseInt(eq.id))
+    );
+
     GeolocCommon.MultiVehicleHistoryModal.show(widget.selectedEquipmentIds, {
-        context: 'widget'
+        context: 'widget',
+        equipments: selectedEquipments
     });
 }
 
