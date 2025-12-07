@@ -968,6 +968,10 @@ GeolocCommon.MultiVehicleHistoryModal = {
                 const mapInstance = window.geolocMultiHistoryMap;
                 if (mapInstance) {
                     mapInstance.invalidateSize();
+                    // Re-fit bounds after modal is fully shown
+                    if (this._lastPositionsForCentering && this._lastPositionsForCentering.length > 0) {
+                        GeolocCommon.HistoryModal.fitMapToCoordinates(mapInstance, this._lastPositionsForCentering);
+                    }
                 }
             }, 150);
         });
@@ -1101,6 +1105,13 @@ GeolocCommon.MultiVehicleHistoryModal = {
             }
 
             this.loadMultipleHistories(this._currentEquipmentIds, newStartDate, newEndDate, mapId);
+        });
+
+        // Make date inputs open picker on click (not just on icon)
+        $('#multiHistoryStartDate, #multiHistoryEndDate').on('click', function() {
+            if (typeof this.showPicker === 'function') {
+                this.showPicker();
+            }
         });
     },
 
@@ -1278,6 +1289,9 @@ GeolocCommon.MultiVehicleHistoryModal = {
         // Hide loading overlay
         $(`#${mapId} .loading-overlay`).hide();
 
+        // Store positions for re-centering after modal is fully shown
+        this._lastPositionsForCentering = allCurrentPositions;
+
         // Fit map to show all current positions
         if (allCurrentPositions.length > 0) {
             GeolocCommon.HistoryModal.fitMapToCoordinates(map, allCurrentPositions);
@@ -1294,33 +1308,34 @@ GeolocCommon.MultiVehicleHistoryModal = {
     },
 
     /**
+     * Map trajectory hex colors to marker icon colors
+     * Maps each TRAJECTORY_COLORS hex value to available marker icon names
+     */
+    TRAJECTORY_COLOR_TO_MARKER: {
+        '#e41a1c': 'red',
+        '#377eb8': 'blue',
+        '#4daf4a': 'green',
+        '#984ea3': 'violet',
+        '#ff7f00': 'orange',
+        '#ffff33': 'yellow',
+        '#a65628': 'orange',
+        '#f781bf': 'red',
+        '#999999': 'grey',
+        '#66c2a5': 'green',
+        '#fc8d62': 'orange',
+        '#8da0cb': 'blue',
+        '#e78ac3': 'red',
+        '#a6d854': 'green',
+        '#ffd92f': 'gold'
+    },
+
+    /**
      * Create a colored marker icon
-     * @param {string} color - Hex color for the marker
-     * @returns {L.DivIcon} Leaflet div icon with color
+     * @param {string} color - Hex color from TRAJECTORY_COLORS
+     * @returns {L.Icon} Leaflet icon with matching color
      */
     createColoredIcon: function(color) {
-        // Use default icon with color tint via CSS filter or SVG
-        // Fallback to standard colored markers if available
-        const availableColors = ['red', 'blue', 'green', 'orange', 'yellow', 'violet', 'grey', 'black', 'gold'];
-        const colorMap = {
-            '#e41a1c': 'red',
-            '#377eb8': 'blue',
-            '#4daf4a': 'green',
-            '#984ea3': 'violet',
-            '#ff7f00': 'orange',
-            '#ffff33': 'yellow',
-            '#a65628': 'orange',
-            '#f781bf': 'red',
-            '#999999': 'grey',
-            '#66c2a5': 'green',
-            '#fc8d62': 'orange',
-            '#8da0cb': 'blue',
-            '#e78ac3': 'red',
-            '#a6d854': 'green',
-            '#ffd92f': 'gold'
-        };
-
-        const markerColor = colorMap[color] || 'blue';
+        const markerColor = this.TRAJECTORY_COLOR_TO_MARKER[color] || 'blue';
         return GeolocCommon.MarkerFactory.createIcon(markerColor);
     },
 
