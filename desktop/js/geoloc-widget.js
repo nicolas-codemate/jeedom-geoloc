@@ -461,6 +461,9 @@ function handleEquipmentSelectionChange(widget, equipmentId, isSelected) {
     // Update marker visibility
     updateMarkerVisibility(widget, equipmentId, isSelected);
     updateHistoryButtonVisibility(widget);
+
+    // Refit map to visible equipments
+    fitMapToVisibleEquipments(widget);
 }
 
 /**
@@ -507,6 +510,9 @@ function setAllEquipmentSelection(widget, selectAll) {
     });
 
     updateHistoryButtonVisibility(widget);
+
+    // Refit map to visible equipments
+    fitMapToVisibleEquipments(widget);
 }
 
 /**
@@ -522,6 +528,24 @@ function updateHistoryButtonVisibility(widget) {
         footer.show();
     } else {
         footer.hide();
+    }
+}
+
+/**
+ * Fit map to show only visible (selected) equipments
+ * @param {Object} widget - Widget instance object
+ */
+function fitMapToVisibleEquipments(widget) {
+    const visibleEquipments = widget.equipments.filter(eq =>
+        widget.selectedEquipmentIds.includes(parseInt(eq.id))
+    );
+
+    if (visibleEquipments.length > 0) {
+        const coordinates = GeolocCommon.EquipmentProcessor.extractCoordinates(visibleEquipments);
+        GeolocCommon.MapManager.fitBoundsToCoordinates(widget.map, coordinates);
+    } else {
+        // No visible equipments - reset to default view
+        widget.map.setView(GeolocCommon.Config.DEFAULT_CENTER, GeolocCommon.Config.DEFAULT_ZOOM);
     }
 }
 
