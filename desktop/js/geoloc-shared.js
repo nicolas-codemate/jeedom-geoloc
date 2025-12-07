@@ -912,24 +912,34 @@ GeolocCommon.HistoryModal = {
 GeolocCommon.MultiVehicleHistoryModal = {
     /**
      * Color palette for multi-vehicle visualization (15 distinct colors)
+     * Each entry has: hex (for trajectories/circles) and marker (for marker icons)
      */
-    TRAJECTORY_COLORS: [
-        '#e41a1c', // red
-        '#377eb8', // blue
-        '#4daf4a', // green
-        '#984ea3', // purple
-        '#ff7f00', // orange
-        '#ffff33', // yellow
-        '#a65628', // brown
-        '#f781bf', // pink
-        '#999999', // grey
-        '#66c2a5', // teal
-        '#fc8d62', // coral
-        '#8da0cb', // light blue
-        '#e78ac3', // magenta
-        '#a6d854', // lime
-        '#ffd92f'  // gold
+    COLORS: [
+        { hex: '#e41a1c', marker: 'red' },
+        { hex: '#377eb8', marker: 'blue' },
+        { hex: '#4daf4a', marker: 'green' },
+        { hex: '#984ea3', marker: 'violet' },
+        { hex: '#ff7f00', marker: 'orange' },
+        { hex: '#ffff33', marker: 'yellow' },
+        { hex: '#a65628', marker: 'orange' },
+        { hex: '#f781bf', marker: 'red' },
+        { hex: '#999999', marker: 'grey' },
+        { hex: '#66c2a5', marker: 'green' },
+        { hex: '#fc8d62', marker: 'orange' },
+        { hex: '#8da0cb', marker: 'blue' },
+        { hex: '#e78ac3', marker: 'red' },
+        { hex: '#a6d854', marker: 'green' },
+        { hex: '#ffd92f', marker: 'gold' }
     ],
+
+    /**
+     * Get color entry by index (cycles through available colors)
+     * @param {number} index - Index for color selection
+     * @returns {Object} Color entry with hex and marker properties
+     */
+    getColor: function(index) {
+        return this.COLORS[index % this.COLORS.length];
+    },
 
     /**
      * Show multi-vehicle history modal
@@ -1175,7 +1185,8 @@ GeolocCommon.MultiVehicleHistoryModal = {
         let totalPoints = 0;
 
         equipments.forEach((equipment, index) => {
-            const color = this.TRAJECTORY_COLORS[index % this.TRAJECTORY_COLORS.length];
+            const colorEntry = this.getColor(index);
+            const color = colorEntry.hex;
             const history = equipment.coordinateHistory || [];
 
             // Filter valid history entries
@@ -1216,7 +1227,7 @@ GeolocCommon.MultiVehicleHistoryModal = {
             if (equipment.latitude && equipment.longitude) {
                 const currentLatLng = [parseFloat(equipment.latitude), parseFloat(equipment.longitude)];
                 const currentMarker = L.marker(currentLatLng, {
-                    icon: this.createColoredIcon(color)
+                    icon: GeolocCommon.MarkerFactory.createIcon(colorEntry.marker)
                 }).addTo(map);
 
                 currentMarker.bindPopup(`
@@ -1305,38 +1316,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
                 </div>
             `);
         }
-    },
-
-    /**
-     * Map trajectory hex colors to marker icon colors
-     * Maps each TRAJECTORY_COLORS hex value to available marker icon names
-     */
-    TRAJECTORY_COLOR_TO_MARKER: {
-        '#e41a1c': 'red',
-        '#377eb8': 'blue',
-        '#4daf4a': 'green',
-        '#984ea3': 'violet',
-        '#ff7f00': 'orange',
-        '#ffff33': 'yellow',
-        '#a65628': 'orange',
-        '#f781bf': 'red',
-        '#999999': 'grey',
-        '#66c2a5': 'green',
-        '#fc8d62': 'orange',
-        '#8da0cb': 'blue',
-        '#e78ac3': 'red',
-        '#a6d854': 'green',
-        '#ffd92f': 'gold'
-    },
-
-    /**
-     * Create a colored marker icon
-     * @param {string} color - Hex color from TRAJECTORY_COLORS
-     * @returns {L.Icon} Leaflet icon with matching color
-     */
-    createColoredIcon: function(color) {
-        const markerColor = this.TRAJECTORY_COLOR_TO_MARKER[color] || 'blue';
-        return GeolocCommon.MarkerFactory.createIcon(markerColor);
     },
 
     /**
