@@ -144,6 +144,11 @@ class GeolocAjaxHandler
 
         $foundEquipments = [];
         foreach ($eqLogics as $eqLogic) {
+            // Check if user has access to this equipment
+            if (!$eqLogic->hasRight('r')) {
+                continue;
+            }
+
             $foundEquipments[] = new GeolocalisableEquipment($eqLogic);
         }
 
@@ -227,42 +232,28 @@ class GeolocAjaxHandler
 
     /**
      * Handle getObjectEquipments action
+     * Recursively collects geolocalisable equipments from object and its children
      */
     private function handleGetObjectEquipments(): void
     {
         $objectId = init('objectId');
-        
+
         if (!$objectId) {
             ajax::error(__('ID de l\'objet requis', __FILE__));
             return;
         }
-        
+
         $object = jeeObject::byId($objectId);
         if (!$object) {
             ajax::error(__('Objet introuvable', __FILE__));
             return;
         }
-        
+
         $this->checkObjectAccess($object);
-        
-        $eqLogics = eqLogic::byObjectId($objectId, true);
-        $geolocalisableEquipments = [];
-        
-        foreach ($eqLogics as $eqLogic) {
-            if (!$eqLogic->hasRight('r')) {
-                continue;
-            }
-            
-            $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
-            if ($geolocalisableEquipment->hasCoordinate()) {
-                $geolocalisableEquipments[] = [
-                    'id' => $eqLogic->getId(),
-                    'name' => $eqLogic->getName(),
-                    'humanName' => $eqLogic->getHumanName()
-                ];
-            }
-        }
-        
+
+        // Use recursive function to get all equipments from object and children
+        $geolocalisableEquipments = collectObjectEquipmentsRecursive($object);
+
         ajax::success($geolocalisableEquipments);
     }
 }
@@ -321,6 +312,44 @@ function buildGeolocalisableItems(jeeObject $parentObject, array $eqLogics): arr
     return $geolocalisableItems;
 }
 
+/**
+ * Recursively collect geolocalisable equipments from object and its children
+ * @param jeeObject $object The object to start from
+ * @return array Array of geolocalisable equipment data
+ */
+function collectObjectEquipmentsRecursive(jeeObject $object): array
+{
+    $geolocalisableEquipments = [];
+
+    // Get equipments from current object
+    $eqLogics = eqLogic::byObjectId($object->getId(), true);
+    foreach ($eqLogics as $eqLogic) {
+        if (!$eqLogic->hasRight('r')) {
+            continue;
+        }
+
+        $geolocalisableEquipment = new GeolocalisableEquipment($eqLogic);
+        if ($geolocalisableEquipment->hasCoordinate()) {
+            $geolocalisableEquipments[] = [
+                'id' => $eqLogic->getId(),
+                'name' => $eqLogic->getName(),
+                'humanName' => $eqLogic->getHumanName()
+            ];
+        }
+    }
+
+    // Recursively get equipments from child objects
+    foreach ($object->getChild() as $child) {
+        if (!$child->hasRight('r')) {
+            continue;
+        }
+
+        $childEquipments = collectObjectEquipmentsRecursive($child);
+        $geolocalisableEquipments = array_merge($geolocalisableEquipments, $childEquipments);
+    }
+
+    return $geolocalisableEquipments;
+}
 
 try {
     require_once dirname(__FILE__).'/../../../../core/php/core.inc.php';
