@@ -109,6 +109,11 @@ final class GeolocalisableEquipment implements JsonSerializable
         /** @var cmd|null $cmdLongitude */
         $cmdLongitude = cmd::byEqLogicIdCmdName($this->eqLogic->getId(), geolocCmd::LONGITUDE_CMD_NAME);
 
+        if (null === $cmdLatitude || null === $cmdLongitude) {
+            $this->addCurrentPositionIfInRange($endDate);
+            return;
+        }
+
         if ('1' !== $cmdLongitude->getIsHistorized() || '1' !== $cmdLatitude->getIsHistorized()) {
             // If not historized, still add current position if date range includes today
             $this->addCurrentPositionIfInRange($endDate);
