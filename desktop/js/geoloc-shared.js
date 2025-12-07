@@ -146,13 +146,14 @@ GeolocCommon.MarkerFactory = {
      * Create popup content for equipment
      * Generates HTML content for equipment popups with optional action buttons
      * @param {Object} equipment - Equipment data object with coordinates and metadata
-     * @param {Object} options - Popup options (showActions, etc.)
+     * @param {Object} options - Popup options (showActions, showHistoryAction, showUpdateAction)
      * @returns {string} HTML string for popup content
      */
     createPopupContent: function(equipment, options = {}) {
         const showActions = options.showActions || false;
+        const showHistoryAction = options.showHistoryAction !== false; // default true
         const showUpdateAction = options.showUpdateAction !== false; // default true
-        
+
         let content = `
             <div class="geoloc-popup">
                 <h4>${equipment.name}</h4>
@@ -163,13 +164,16 @@ GeolocCommon.MarkerFactory = {
         }
 
         if (showActions) {
-            content += `
-                <div>
+            content += `<div>`;
+
+            if (showHistoryAction) {
+                content += `
                     <a class="btn btn-primary btn-xs map-action" data-action="getHistory" data-eqlogic-id="${equipment.id}">
                         <i class="fa fa-history"></i> Historique
                     </a>
-            `;
-            
+                `;
+            }
+
             if (showUpdateAction) {
                 content += `
                     <a class="btn btn-warning btn-xs map-action" data-action="updatePosition" data-eqLogic-id="${equipment.id}">
@@ -177,7 +181,7 @@ GeolocCommon.MarkerFactory = {
                     </a>
                 `;
             }
-            
+
             content += `</div>`;
         }
 
@@ -898,5 +902,428 @@ GeolocCommon.HistoryModal = {
                 map.setView(coordinates[0], 15);
             }
         }
+    }
+};
+
+/**
+ * Multi-Vehicle History Modal Manager
+ * Shows trajectories for multiple selected equipments simultaneously
+ */
+GeolocCommon.MultiVehicleHistoryModal = {
+    /**
+     * Color palette for multi-vehicle visualization (15 distinct colors)
+     * Each entry has: hex (for trajectories/circles) and marker (for marker icons)
+     */
+    COLORS: [
+        { hex: '#e41a1c', marker: 'red' },
+        { hex: '#377eb8', marker: 'blue' },
+        { hex: '#4daf4a', marker: 'green' },
+        { hex: '#984ea3', marker: 'violet' },
+        { hex: '#ff7f00', marker: 'orange' },
+        { hex: '#ffff33', marker: 'yellow' },
+        { hex: '#a65628', marker: 'orange' },
+        { hex: '#f781bf', marker: 'red' },
+        { hex: '#999999', marker: 'grey' },
+        { hex: '#66c2a5', marker: 'green' },
+        { hex: '#fc8d62', marker: 'orange' },
+        { hex: '#8da0cb', marker: 'blue' },
+        { hex: '#e78ac3', marker: 'red' },
+        { hex: '#a6d854', marker: 'green' },
+        { hex: '#ffd92f', marker: 'gold' }
+    ],
+
+    /**
+     * Get color entry by index (cycles through available colors)
+     * @param {number} index - Index for color selection
+     * @returns {Object} Color entry with hex and marker properties
+     */
+    getColor: function(index) {
+        return this.COLORS[index % this.COLORS.length];
+    },
+
+    /**
+     * Show multi-vehicle history modal
+     * @param {Array} equipmentIds - Array of equipment IDs to show history for
+     * @param {Object} options - Modal options (context, equipments)
+     */
+    show: function(equipmentIds, options = {}) {
+        if (!equipmentIds || equipmentIds.length === 0) {
+            console.warn('No equipment IDs provided for multi-vehicle history');
+            return;
+        }
+
+        const modalId = 'geolocMultiHistoryModal';
+        const mapId = 'geolocMultiHistoryMap';
+
+        // Default to current day
+        const today = new Date();
+        const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+        const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+        const modalHTML = this.buildModalHTML(modalId, mapId, startDate, endDate);
+
+        // Remove existing and add new modal
+        $(`#${modalId}`).remove();
+        $('body').append(modalHTML);
+
+        // Initialize modal with optional equipments for initial centering
+        this.initializeModal(modalId, mapId, equipmentIds, startDate, endDate, options.equipments);
+
+        // Show modal
+        $(`#${modalId}`).modal('show');
+
+        // Handle map rendering after modal shown
+        $(`#${modalId}`).on('shown.bs.modal', () => {
+            setTimeout(() => {
+                const mapInstance = window.geolocMultiHistoryMap;
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                    // Re-fit bounds after modal is fully shown
+                    if (this._lastPositionsForCentering && this._lastPositionsForCentering.length > 0) {
+                        GeolocCommon.HistoryModal.fitMapToCoordinates(mapInstance, this._lastPositionsForCentering);
+                    }
+                }
+            }, 150);
+        });
+
+        // Cleanup on hide
+        $(`#${modalId}`).on('hidden.bs.modal', function() {
+            if (window.geolocMultiHistoryMap) {
+                window.geolocMultiHistoryMap.remove();
+                delete window.geolocMultiHistoryMap;
+            }
+            $(this).remove();
+        });
+    },
+
+    /**
+     * Build modal HTML structure
+     * @param {string} modalId - Modal DOM ID
+     * @param {string} mapId - Map container DOM ID
+     * @param {Date} startDate - Initial start date
+     * @param {Date} endDate - Initial end date
+     * @returns {string} HTML string for modal
+     */
+    buildModalHTML: function(modalId, mapId, startDate, endDate) {
+        return `
+            <div class="modal fade" id="${modalId}" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-lg" role="document" style="width: 95%; max-width: 1400px;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title">
+                                <i class="fa fa-route"></i> Historique multi-vehicules
+                            </h4>
+                        </div>
+                        <div class="modal-body">
+                            <div class="container-fluid">
+                                <div class="row" style="margin-bottom: 15px;">
+                                    <div class="col-md-3">
+                                        <label>Date de debut:</label>
+                                        <input type="date" id="multiHistoryStartDate" class="form-control input-sm"
+                                               value="${this.formatDateForInput(startDate)}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label>Date de fin:</label>
+                                        <input type="date" id="multiHistoryEndDate" class="form-control input-sm"
+                                               value="${this.formatDateForInput(endDate)}">
+                                    </div>
+                                    <div class="col-md-2" style="padding-top: 25px;">
+                                        <button type="button" class="btn btn-primary btn-sm" id="multiHistoryRefresh">
+                                            <i class="fa fa-refresh"></i> Appliquer
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <h5>Legende</h5>
+                                        <div id="multiHistoryLegend" class="multi-history-legend">
+                                            <div style="padding: 15px; text-align: center;">
+                                                <i class="fa fa-spinner fa-spin"></i> Chargement...
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div id="${mapId}" style="height: 600px; position: relative;">
+                                            <div class="loading-overlay" style="display: flex;">
+                                                <i class="fa fa-spinner fa-spin"></i>
+                                                <span>Chargement des historiques...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Initialize modal with event handlers and load data
+     * @param {string} modalId - Modal DOM ID
+     * @param {string} mapId - Map container DOM ID
+     * @param {Array} equipmentIds - Array of equipment IDs
+     * @param {Date} startDate - Initial start date
+     * @param {Date} endDate - Initial end date
+     * @param {Array} equipments - Optional array of equipment objects with current positions
+     */
+    initializeModal: function(modalId, mapId, equipmentIds, startDate, endDate, equipments) {
+        // Store equipment IDs for refresh
+        this._currentEquipmentIds = equipmentIds;
+
+        // Calculate initial center from equipment current positions
+        let initialCenter = GeolocCommon.Config.DEFAULT_CENTER;
+        let initialZoom = GeolocCommon.Config.DEFAULT_ZOOM;
+
+        if (equipments && equipments.length > 0) {
+            const validPositions = equipments
+                .filter(eq => eq.latitude && eq.longitude)
+                .map(eq => [parseFloat(eq.latitude), parseFloat(eq.longitude)]);
+
+            if (validPositions.length > 0) {
+                // Calculate center point
+                const sumLat = validPositions.reduce((sum, pos) => sum + pos[0], 0);
+                const sumLng = validPositions.reduce((sum, pos) => sum + pos[1], 0);
+                initialCenter = [sumLat / validPositions.length, sumLng / validPositions.length];
+                initialZoom = 10; // Closer zoom when we have positions
+            }
+        }
+
+        // Create map centered on current positions
+        window.geolocMultiHistoryMap = GeolocCommon.MapManager.createMap(mapId, {
+            center: initialCenter,
+            zoom: initialZoom
+        });
+
+        // Load histories
+        this.loadMultipleHistories(equipmentIds, startDate, endDate, mapId);
+
+        // Bind refresh button
+        $('#multiHistoryRefresh').on('click', () => {
+            const newStartDate = new Date($('#multiHistoryStartDate').val());
+            const newEndDate = new Date($('#multiHistoryEndDate').val());
+
+            // Validate dates
+            if (newEndDate < newStartDate) {
+                $.fn.showAlert({
+                    message: 'La date de fin doit etre superieure a la date de debut',
+                    level: 'warning'
+                });
+                return;
+            }
+
+            this.loadMultipleHistories(this._currentEquipmentIds, newStartDate, newEndDate, mapId);
+        });
+
+        // Make date inputs open picker on click (not just on icon)
+        $('#multiHistoryStartDate, #multiHistoryEndDate').on('click', function() {
+            if (typeof this.showPicker === 'function') {
+                this.showPicker();
+            }
+        });
+    },
+
+    /**
+     * Load history for multiple equipments
+     * @param {Array} equipmentIds - Array of equipment IDs
+     * @param {Date} startDate - Start date for history filter
+     * @param {Date} endDate - End date for history filter
+     * @param {string} mapId - Map container DOM ID
+     */
+    loadMultipleHistories: function(equipmentIds, startDate, endDate, mapId) {
+        const legendContainer = $('#multiHistoryLegend');
+        legendContainer.html('<div style="padding: 15px; text-align: center;"><i class="fa fa-spinner fa-spin"></i> Chargement des historiques...</div>');
+
+        // Show loading overlay on map
+        $(`#${mapId} .loading-overlay`).css('display', 'flex');
+
+        // Batch load all equipment histories
+        const promises = equipmentIds.map(eqId =>
+            GeolocCommon.AjaxHelper.request('getEquipmentById', {
+                eqLogicId: eqId,
+                getHistory: true,
+                startDate: startDate.toDateString(),
+                endDate: endDate.toDateString()
+            })
+        );
+
+        Promise.all(promises)
+            .then(responses => {
+                const equipmentsWithHistory = responses
+                    .filter(r => r.state === 'ok')
+                    .map(r => r.result);
+
+                this.renderMultipleTrajectories(equipmentsWithHistory, mapId);
+            })
+            .catch(error => {
+                console.error('Error loading multi-vehicle history:', error);
+                legendContainer.html('<div class="alert alert-danger">Erreur lors du chargement des historiques</div>');
+                $(`#${mapId} .loading-overlay`).hide();
+            });
+    },
+
+    /**
+     * Render trajectories for multiple equipments on the map
+     * @param {Array} equipments - Array of equipment objects with coordinate history
+     * @param {string} mapId - Map container DOM ID
+     */
+    renderMultipleTrajectories: function(equipments, mapId) {
+        const map = window.geolocMultiHistoryMap;
+        const legendContainer = $('#multiHistoryLegend');
+
+        // Clear existing layers (except tile layer)
+        map.eachLayer(layer => {
+            if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker) {
+                map.removeLayer(layer);
+            }
+        });
+
+        const allCurrentPositions = []; // Current positions for map centering
+        let legendHtml = '';
+        let totalPoints = 0;
+
+        equipments.forEach((equipment, index) => {
+            const colorEntry = this.getColor(index);
+            const color = colorEntry.hex;
+            const history = equipment.coordinateHistory || [];
+
+            // Filter valid history entries
+            const validHistory = history.filter(h => {
+                const lat = h.coordinate ? h.coordinate.latitude : h.latitude;
+                const lng = h.coordinate ? h.coordinate.longitude : h.longitude;
+                return lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng));
+            });
+
+            // Add to legend
+            legendHtml += `
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: ${color};"></span>
+                    <span class="legend-name" title="${equipment.name}">${equipment.name}</span>
+                    <span class="legend-count">(${validHistory.length} pts)</span>
+                </div>
+            `;
+
+            if (validHistory.length === 0) {
+                return; // Skip equipment with no history
+            }
+
+            // Collect current position for map centering
+            if (equipment.latitude && equipment.longitude) {
+                allCurrentPositions.push([parseFloat(equipment.latitude), parseFloat(equipment.longitude)]);
+            }
+
+            totalPoints += validHistory.length;
+
+            // Extract coordinates
+            const latLngs = validHistory.map(h => {
+                const lat = h.coordinate ? h.coordinate.latitude : h.latitude;
+                const lng = h.coordinate ? h.coordinate.longitude : h.longitude;
+                return [parseFloat(lat), parseFloat(lng)];
+            });
+
+            // Add current position marker
+            if (equipment.latitude && equipment.longitude) {
+                const currentLatLng = [parseFloat(equipment.latitude), parseFloat(equipment.longitude)];
+                const currentMarker = L.marker(currentLatLng, {
+                    icon: GeolocCommon.MarkerFactory.createIcon(colorEntry.marker)
+                }).addTo(map);
+
+                currentMarker.bindPopup(`
+                    <div class="geoloc-popup">
+                        <h4>${equipment.name}</h4>
+                        <p><strong>Position actuelle</strong></p>
+                    </div>
+                `);
+            }
+
+            // Draw trajectory
+            if (latLngs.length > 1) {
+                if (typeof L.polyline.antPath === 'function') {
+                    try {
+                        L.polyline.antPath(latLngs, {
+                            delay: 1500,
+                            dashArray: [10, 20],
+                            weight: 4,
+                            color: color,
+                            pulseColor: '#FFFFFF',
+                            paused: false,
+                            reverse: false,
+                            hardwareAcceleration: true
+                        }).addTo(map);
+                    } catch (e) {
+                        // Fallback to standard polyline
+                        L.polyline(latLngs, {
+                            color: color,
+                            weight: 4,
+                            opacity: 0.8
+                        }).addTo(map);
+                    }
+                } else {
+                    L.polyline(latLngs, {
+                        color: color,
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                }
+            }
+
+            // Add history point markers
+            latLngs.forEach((latLng, pointIndex) => {
+                const historyEntry = validHistory[pointIndex];
+                const date = new Date(historyEntry.date).toLocaleString('fr-FR');
+
+                L.circleMarker(latLng, {
+                    radius: 4,
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.8
+                }).bindPopup(`
+                    <div class="geoloc-popup">
+                        <h4>${equipment.name}</h4>
+                        <p><strong>Date:</strong> ${date}</p>
+                        <p><strong>Lat:</strong> ${latLng[0].toFixed(6)}</p>
+                        <p><strong>Lng:</strong> ${latLng[1].toFixed(6)}</p>
+                    </div>
+                `).addTo(map);
+            });
+        });
+
+        // Update legend
+        if (legendHtml) {
+            legendContainer.html(legendHtml);
+        } else {
+            legendContainer.html('<div class="text-muted" style="padding: 15px; text-align: center;">Aucun equipement selectionne</div>');
+        }
+
+        // Hide loading overlay
+        $(`#${mapId} .loading-overlay`).hide();
+
+        // Store positions for re-centering after modal is fully shown
+        this._lastPositionsForCentering = allCurrentPositions;
+
+        // Fit map to show all current positions
+        if (allCurrentPositions.length > 0) {
+            GeolocCommon.HistoryModal.fitMapToCoordinates(map, allCurrentPositions);
+        }
+
+        // Show message if no history data
+        if (totalPoints === 0) {
+            legendContainer.append(`
+                <div class="alert alert-info" style="margin-top: 10px;">
+                    <i class="fa fa-info-circle"></i> Aucune donnee d'historique pour cette periode
+                </div>
+            `);
+        }
+    },
+
+    /**
+     * Format date for HTML input[type="date"]
+     * @param {Date} date - Date to format
+     * @returns {string} Formatted date string (YYYY-MM-DD)
+     */
+    formatDateForInput: function(date) {
+        return date.toISOString().split('T')[0];
     }
 };

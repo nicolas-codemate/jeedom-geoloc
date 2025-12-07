@@ -30,7 +30,11 @@ function initGeolocWidget(widgetId, objectId, objectName) {
         map: null,
         markers: [],
         refreshInterval: null,
-        isLoading: false
+        isLoading: false,
+        // Control panel state
+        equipments: [],
+        selectedEquipmentIds: [],
+        controlPanelVisible: false
     };
 
     window.geolocWidgetInstances[widgetId] = widget;
@@ -142,6 +146,9 @@ function initializeWidget(widget) {
             keyboard: false
         });
 
+        // Initialize control panel
+        initControlPanel(widget);
+
         // Load equipment
         loadEquipments(widget);
 
@@ -201,17 +208,33 @@ function processEquipments(widget, data) {
     // Collect and filter equipment with valid coordinates
     const allEquipments = GeolocCommon.EquipmentProcessor.collectEquipments(data);
     let validEquipments = GeolocCommon.EquipmentProcessor.filterValidCoordinates(allEquipments);
-    
-    // Filter by selected equipments if configured
+
+    // Filter by selected equipments if configured (widget-level filter)
     if (widget.selectedEquipments && widget.selectedEquipments.trim() !== '') {
         const selectedIds = widget.selectedEquipments.split(',').map(id => parseInt(id.trim()));
-        validEquipments = validEquipments.filter(equipment => 
+        validEquipments = validEquipments.filter(equipment =>
             selectedIds.includes(parseInt(equipment.id))
         );
     }
 
+    // Store equipments for control panel
+    widget.equipments = validEquipments;
+
+    // Initialize all equipment as selected (checked) by default
+    // Only reset selection if this is first load or equipments changed
+    const currentIds = validEquipments.map(eq => parseInt(eq.id));
+    const needsReset = widget.selectedEquipmentIds.length === 0 ||
+        !currentIds.every(id => widget.selectedEquipmentIds.includes(id) || !widget.selectedEquipmentIds.includes(id));
+
+    if (needsReset || widget.selectedEquipmentIds.length === 0) {
+        widget.selectedEquipmentIds = currentIds;
+    }
+
     // Update equipment counter
     updateEquipmentCount(widget.id, validEquipments.length);
+
+    // Render equipment list in control panel
+    renderEquipmentList(widget);
 
     if (validEquipments.length === 0) {
         // No geolocatable equipment - return to default view
@@ -222,20 +245,35 @@ function processEquipments(widget, data) {
     // Add markers to map
     validEquipments.forEach((equipment, index) => {
         const marker = createMarker(equipment);
-        marker.addTo(widget.map);
+        const eqId = parseInt(equipment.id);
+
+        // Store equipment ID on marker for later reference
+        marker._equipmentId = eqId;
+
+        // Only add to map if selected
+        if (widget.selectedEquipmentIds.includes(eqId)) {
+            marker.addTo(widget.map);
+        }
+
         widget.markers.push(marker);
-        
-        // Auto-open popups for up to MAX_AUTO_OPEN_POPUPS equipments
-        if (validEquipments.length <= MAX_AUTO_OPEN_POPUPS) {
+
+        // Auto-open popups for up to MAX_AUTO_OPEN_POPUPS equipments (only if selected)
+        if (validEquipments.length <= MAX_AUTO_OPEN_POPUPS && widget.selectedEquipmentIds.includes(eqId)) {
             setTimeout(() => {
                 marker.openPopup();
             }, 300 + (index * 100)); // Stagger popup opening
         }
     });
 
-    // Adjust view to include all markers
-    const coordinates = GeolocCommon.EquipmentProcessor.extractCoordinates(validEquipments);
-    GeolocCommon.MapManager.fitBoundsToCoordinates(widget.map, coordinates);
+    // Adjust view to include only visible markers
+    const visibleEquipments = validEquipments.filter(eq =>
+        widget.selectedEquipmentIds.includes(parseInt(eq.id))
+    );
+
+    if (visibleEquipments.length > 0) {
+        const coordinates = GeolocCommon.EquipmentProcessor.extractCoordinates(visibleEquipments);
+        GeolocCommon.MapManager.fitBoundsToCoordinates(widget.map, coordinates);
+    }
 }
 
 /**
@@ -253,9 +291,10 @@ function createMarker(equipment) {
         color: 'blue'
     });
 
-    // Configure popup for multiple simultaneous display
+    // Configure popup - HIDE History button in widget mode (use control panel instead)
     const popupContent = GeolocCommon.MarkerFactory.createPopupContent(equipment, {
         showActions: true,
+        showHistoryAction: false,  // History is now in control panel
         showUpdateAction: false
     });
 
@@ -265,15 +304,6 @@ function createMarker(equipment) {
         maxWidth: 250,
         autoClose: false,  // Don't auto-close when another popup opens
         closeOnClick: false  // Don't close when clicking on map
-    });
-
-    // Add event handler for popup actions
-    marker.on('popupopen', function () {
-        $('.map-action').off('click').on('click', function () {
-            const action = $(this).data('action');
-            const eqLogicId = $(this).data('eqlogicId');
-            handleMapAction(action, eqLogicId);
-        });
     });
 
     return marker;
@@ -292,42 +322,6 @@ function clearMarkers(widget) {
 }
 
 /**
- * Handle map popup actions in widget context
- * Processes actions triggered from map popups, specifically history viewing
- * @param {string} action - Action to perform (getHistory, updatePosition)
- * @param {string} eqLogicId - Equipment ID to perform action on
- */
-function handleMapAction(action, eqLogicId) {
-    switch (action) {
-        case "getHistory":
-            showEquipmentHistory(eqLogicId);
-            break;
-        case "updatePosition":
-            // Not supported in widget mode - redirect to admin page
-            $.fn.showAlert({
-                message: 'Pour modifier la position, veuillez utiliser la page d\'administration du plugin',
-                level: 'warning'
-            });
-            break;
-        default:
-            console.error('Unknown action:', action);
-    }
-}
-
-/**
- * Show equipment history in modal
- * Opens a modal dialog displaying the position history for the specified equipment
- * @param {string} eqLogicId - Equipment ID to show history for
- */
-function showEquipmentHistory(eqLogicId) {
-    // Use the shared history modal from GeolocCommon
-    GeolocCommon.HistoryModal.show(eqLogicId, {
-        context: 'widget'
-    });
-}
-
-
-/**
  * Update equipment counter display
  * Updates the equipment count text displayed in the widget
  * @param {string} widgetId - Widget identifier
@@ -337,13 +331,247 @@ function updateEquipmentCount(widgetId, count) {
     const countElement = document.getElementById(`equipmentCount_${widgetId}`);
     if (countElement) {
         countElement.textContent = `${count} équipement(s)`;
-        
+
         // Add visual emphasis with a subtle animation when count changes
         countElement.style.transform = 'scale(1.1)';
         setTimeout(() => {
             countElement.style.transform = 'scale(1)';
         }, 200);
     }
+}
+
+// ============================================
+// Control Panel Functions
+// ============================================
+
+/**
+ * Initialize control panel event handlers
+ * Sets up toggle, close, check/uncheck all, and history button events
+ * @param {Object} widget - Widget instance object
+ */
+function initControlPanel(widget) {
+    const toggleBtn = $(`#controlToggle_${widget.id}`);
+    const panel = $(`#controlPanel_${widget.id}`);
+    const closeBtn = panel.find('.control-panel-close');
+    const checkAllBtn = $(`#checkAll_${widget.id}`);
+    const uncheckAllBtn = $(`#uncheckAll_${widget.id}`);
+    const historyBtn = $(`#multiHistoryBtn_${widget.id}`);
+
+    // Toggle panel visibility
+    toggleBtn.on('click', () => toggleControlPanel(widget));
+    closeBtn.on('click', () => hideControlPanel(widget));
+
+    // Check/Uncheck all buttons
+    checkAllBtn.on('click', () => setAllEquipmentSelection(widget, true));
+    uncheckAllBtn.on('click', () => setAllEquipmentSelection(widget, false));
+
+    // Multi-vehicle history button
+    historyBtn.on('click', () => showMultiVehicleHistory(widget));
+}
+
+/**
+ * Toggle control panel visibility
+ * @param {Object} widget - Widget instance object
+ */
+function toggleControlPanel(widget) {
+    widget.controlPanelVisible = !widget.controlPanelVisible;
+    const panel = $(`#controlPanel_${widget.id}`);
+    const toggleBtn = $(`#controlToggle_${widget.id}`);
+
+    if (widget.controlPanelVisible) {
+        panel.show();
+        toggleBtn.addClass('active');
+    } else {
+        panel.hide();
+        toggleBtn.removeClass('active');
+    }
+}
+
+/**
+ * Hide control panel
+ * @param {Object} widget - Widget instance object
+ */
+function hideControlPanel(widget) {
+    widget.controlPanelVisible = false;
+    $(`#controlPanel_${widget.id}`).hide();
+    $(`#controlToggle_${widget.id}`).removeClass('active');
+}
+
+/**
+ * Render equipment list in control panel
+ * Creates checkbox items for each equipment
+ * @param {Object} widget - Widget instance object
+ */
+function renderEquipmentList(widget) {
+    const listContainer = $(`#equipmentList_${widget.id}`);
+    listContainer.empty();
+
+    if (widget.equipments.length === 0) {
+        listContainer.html('<div style="padding: 15px; text-align: center; color: #888;">Aucun equipement</div>');
+        updateHistoryButtonVisibility(widget);
+        return;
+    }
+
+    widget.equipments.forEach(equipment => {
+        const eqId = parseInt(equipment.id);
+        const isChecked = widget.selectedEquipmentIds.includes(eqId);
+        const itemHtml = `
+            <div class="control-panel-item" data-equipment-id="${eqId}">
+                <input type="checkbox" ${isChecked ? 'checked' : ''}
+                       id="eq_${widget.id}_${eqId}">
+                <label class="equipment-name" for="eq_${widget.id}_${eqId}"
+                       title="${equipment.name}">${equipment.name}</label>
+            </div>
+        `;
+        listContainer.append(itemHtml);
+    });
+
+    // Bind checkbox change events
+    listContainer.find('input[type="checkbox"]').on('change', function() {
+        const eqId = parseInt($(this).closest('.control-panel-item').data('equipment-id'));
+        handleEquipmentSelectionChange(widget, eqId, $(this).is(':checked'));
+    });
+
+    // Bind label click to toggle checkbox
+    listContainer.find('.equipment-name').on('click', function(e) {
+        e.preventDefault();
+        const checkbox = $(this).siblings('input[type="checkbox"]');
+        checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+    });
+
+    updateHistoryButtonVisibility(widget);
+}
+
+/**
+ * Handle equipment selection change
+ * Updates selection state and marker visibility
+ * @param {Object} widget - Widget instance object
+ * @param {number} equipmentId - Equipment ID that changed
+ * @param {boolean} isSelected - Whether equipment is now selected
+ */
+function handleEquipmentSelectionChange(widget, equipmentId, isSelected) {
+    if (isSelected) {
+        if (!widget.selectedEquipmentIds.includes(equipmentId)) {
+            widget.selectedEquipmentIds.push(equipmentId);
+        }
+    } else {
+        widget.selectedEquipmentIds = widget.selectedEquipmentIds.filter(id => id !== equipmentId);
+    }
+
+    // Update marker visibility
+    updateMarkerVisibility(widget, equipmentId, isSelected);
+    updateHistoryButtonVisibility(widget);
+
+    // Refit map to visible equipments
+    fitMapToVisibleEquipments(widget);
+}
+
+/**
+ * Update marker visibility on map
+ * Shows or hides marker based on selection state
+ * @param {Object} widget - Widget instance object
+ * @param {number} equipmentId - Equipment ID
+ * @param {boolean} isVisible - Whether marker should be visible
+ */
+function updateMarkerVisibility(widget, equipmentId, isVisible) {
+    const marker = widget.markers.find(m => m._equipmentId === equipmentId);
+    if (marker) {
+        if (isVisible) {
+            if (!widget.map.hasLayer(marker)) {
+                marker.addTo(widget.map);
+            }
+        } else {
+            if (widget.map.hasLayer(marker)) {
+                widget.map.removeLayer(marker);
+            }
+        }
+    }
+}
+
+/**
+ * Set all equipment selection state
+ * Checks or unchecks all equipment checkboxes
+ * @param {Object} widget - Widget instance object
+ * @param {boolean} selectAll - True to select all, false to deselect all
+ */
+function setAllEquipmentSelection(widget, selectAll) {
+    if (selectAll) {
+        widget.selectedEquipmentIds = widget.equipments.map(eq => parseInt(eq.id));
+    } else {
+        widget.selectedEquipmentIds = [];
+    }
+
+    // Update checkboxes
+    $(`#equipmentList_${widget.id} input[type="checkbox"]`).prop('checked', selectAll);
+
+    // Update all markers
+    widget.equipments.forEach(eq => {
+        updateMarkerVisibility(widget, parseInt(eq.id), selectAll);
+    });
+
+    updateHistoryButtonVisibility(widget);
+
+    // Refit map to visible equipments
+    fitMapToVisibleEquipments(widget);
+}
+
+/**
+ * Update history button visibility
+ * Shows button only if at least one equipment is selected
+ * @param {Object} widget - Widget instance object
+ */
+function updateHistoryButtonVisibility(widget) {
+    const footer = $(`#controlPanelFooter_${widget.id}`);
+    const hasSelection = widget.selectedEquipmentIds.length > 0;
+
+    if (hasSelection) {
+        footer.show();
+    } else {
+        footer.hide();
+    }
+}
+
+/**
+ * Fit map to show only visible (selected) equipments
+ * @param {Object} widget - Widget instance object
+ */
+function fitMapToVisibleEquipments(widget) {
+    const visibleEquipments = widget.equipments.filter(eq =>
+        widget.selectedEquipmentIds.includes(parseInt(eq.id))
+    );
+
+    if (visibleEquipments.length > 0) {
+        const coordinates = GeolocCommon.EquipmentProcessor.extractCoordinates(visibleEquipments);
+        GeolocCommon.MapManager.fitBoundsToCoordinates(widget.map, coordinates);
+    } else {
+        // No visible equipments - reset to default view
+        widget.map.setView(GeolocCommon.Config.DEFAULT_CENTER, GeolocCommon.Config.DEFAULT_ZOOM);
+    }
+}
+
+/**
+ * Show multi-vehicle history modal
+ * Opens the history modal for all selected equipments
+ * @param {Object} widget - Widget instance object
+ */
+function showMultiVehicleHistory(widget) {
+    if (widget.selectedEquipmentIds.length === 0) {
+        $.fn.showAlert({
+            message: 'Veuillez selectionner au moins un equipement',
+            level: 'warning'
+        });
+        return;
+    }
+
+    // Get selected equipments with their current positions
+    const selectedEquipments = widget.equipments.filter(eq =>
+        widget.selectedEquipmentIds.includes(parseInt(eq.id))
+    );
+
+    GeolocCommon.MultiVehicleHistoryModal.show(widget.selectedEquipmentIds, {
+        context: 'widget',
+        equipments: selectedEquipments
+    });
 }
 
 // Cleanup when widget is destroyed
