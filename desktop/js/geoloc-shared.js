@@ -1169,9 +1169,9 @@ GeolocCommon.MultiVehicleHistoryModal = {
             zoom: initialZoom
         });
 
-        // Initialize flatpickr datetime pickers
-        const startPicker = this.initDateTimePicker('multiHistoryStartDate', startDate);
-        const endPicker = this.initDateTimePicker('multiHistoryEndDate', endDate);
+        // Initialize flatpickr datetime pickers (use shared function from HistoryModal)
+        const startPicker = GeolocCommon.HistoryModal.initDateTimePicker('multiHistoryStartDate', startDate);
+        const endPicker = GeolocCommon.HistoryModal.initDateTimePicker('multiHistoryEndDate', endDate);
 
         // Store pickers for cleanup
         this._pickers = { startPicker, endPicker };
@@ -1194,29 +1194,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
             }
 
             this.loadMultipleHistories(this._currentEquipmentIds, newStartDate, newEndDate, mapId);
-        });
-    },
-
-    /**
-     * Initialize flatpickr datetime picker on an input element
-     * @param {string} inputId - ID of the input element
-     * @param {Date} defaultDate - Default date to set
-     * @returns {Object|null} Flatpickr instance or null if input not found
-     */
-    initDateTimePicker: function(inputId, defaultDate) {
-        const input = document.getElementById(inputId);
-        if (!input) return null;
-
-        const lang = typeof jeeFrontEnd !== 'undefined' ? jeeFrontEnd.language.substring(0, 2) : 'fr';
-        if (lang === 'fr' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.fr) {
-            flatpickr.localize(flatpickr.l10ns.fr);
-        }
-
-        return flatpickr(input, {
-            enableTime: true,
-            dateFormat: "Y-m-d H:i",
-            time_24hr: true,
-            defaultDate: defaultDate
         });
     },
 
@@ -1278,7 +1255,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
             }
         });
 
-        const allCurrentPositions = []; // Current positions for map centering
         const allCoordinatesForBounds = []; // All coordinates (current + history) for map bounds
         let legendHtml = '';
         let totalPoints = 0;
@@ -1347,7 +1323,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
                         ${dateStr ? `<p><strong>Date:</strong> ${dateStr}</p>` : ''}
                     </div>
                 `);
-                allCurrentPositions.push(currentLatLng);
                 allCoordinatesForBounds.push(currentLatLng);
             } else if (validHistory.length > 0) {
                 // Display last history point as main marker ("Derniere position connue")
@@ -1368,7 +1343,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
                         <p><strong>Date:</strong> ${dateStr}</p>
                     </div>
                 `);
-                allCurrentPositions.push(lastLatLng);
 
                 // Mark this index to skip in circleMarker loop
                 lastHistoryMarkerAsMain = validHistory.length - 1;
