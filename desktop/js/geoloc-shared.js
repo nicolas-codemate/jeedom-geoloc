@@ -385,10 +385,12 @@ GeolocCommon.HistoryModal = {
             return;
         }
 
-        // Default date range (last week)
+        // Default date range (last week, from 00:00 to 23:59)
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
         const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
         
         const startDateString = startDate.toLocaleDateString('fr-FR', {
             day: '2-digit',
@@ -423,13 +425,13 @@ GeolocCommon.HistoryModal = {
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label class="control-label" for="historyStartDate_${eqLogicId}">Date de début:</label>
-                                                <input type="date" id="historyStartDate_${eqLogicId}" class="form-control input-sm" value="${this.formatDateForInput(startDate)}">
+                                                <input type="text" id="historyStartDate_${eqLogicId}" class="form-control input-sm in_datetimepicker" placeholder="AAAA-MM-JJ HH:MM">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label class="control-label" for="historyEndDate_${eqLogicId}">Date de fin:</label>
-                                                <input type="date" id="historyEndDate_${eqLogicId}" class="form-control input-sm" value="${this.formatDateForInput(endDate)}">
+                                                <input type="text" id="historyEndDate_${eqLogicId}" class="form-control input-sm in_datetimepicker" placeholder="AAAA-MM-JJ HH:MM">
                                             </div>
                                         </div>
                                     </div>
@@ -488,6 +490,13 @@ GeolocCommon.HistoryModal = {
 
         // Clean up when modal is hidden
         $(`#${modalId}`).on('hidden.bs.modal', function () {
+            // Clean up flatpickr instances
+            if (window.geolocHistoryPickers && window.geolocHistoryPickers[modalId]) {
+                const pickers = window.geolocHistoryPickers[modalId];
+                if (pickers.startPicker) pickers.startPicker.destroy();
+                if (pickers.endPicker) pickers.endPicker.destroy();
+                delete window.geolocHistoryPickers[modalId];
+            }
             // Clean up map instance
             if (window.geolocHistoryMaps && window.geolocHistoryMaps[mapId]) {
                 window.geolocHistoryMaps[mapId].remove();
@@ -501,19 +510,29 @@ GeolocCommon.HistoryModal = {
      * Initialize modal with equipment data and event handlers
      * Sets up the modal content, loads initial data, and binds events
      * @param {string} modalId - Modal DOM ID
-     * @param {string} mapId - Map container DOM ID  
+     * @param {string} mapId - Map container DOM ID
      * @param {string} eqLogicId - Equipment ID
      * @param {Date} startDate - Initial start date
      * @param {Date} endDate - Initial end date
      */
     initializeModal: function(modalId, mapId, eqLogicId, startDate, endDate) {
+        // Initialize flatpickr datetime pickers
+        const startPicker = this.initDateTimePicker(`historyStartDate_${eqLogicId}`, startDate);
+        const endPicker = this.initDateTimePicker(`historyEndDate_${eqLogicId}`, endDate);
+
+        // Store pickers for cleanup
+        if (!window.geolocHistoryPickers) {
+            window.geolocHistoryPickers = {};
+        }
+        window.geolocHistoryPickers[modalId] = { startPicker, endPicker };
+
         // Load initial equipment data
         this.loadEquipmentHistory(eqLogicId, startDate, endDate, mapId);
 
         // Bind refresh button
         $(`#refreshHistory_${eqLogicId}`).on('click', () => {
-            const newStartDate = new Date($(`#historyStartDate_${eqLogicId}`).val());
-            const newEndDate = new Date($(`#historyEndDate_${eqLogicId}`).val());
+            const newStartDate = startPicker.selectedDates[0] || startDate;
+            const newEndDate = endPicker.selectedDates[0] || endDate;
             this.loadEquipmentHistory(eqLogicId, newStartDate, newEndDate, mapId);
         });
     },
@@ -534,8 +553,8 @@ GeolocCommon.HistoryModal = {
         GeolocCommon.AjaxHelper.request('getEquipmentById', {
             eqLogicId: eqLogicId,
             getHistory: true,
-            startDate: startDate.toDateString(),
-            endDate: endDate.toDateString()
+            startDate: this.formatDateTimeForAjax(startDate),
+            endDate: this.formatDateTimeForAjax(endDate)
         })
         .done((response) => {
             if (response.state !== 'ok') {
@@ -852,13 +871,58 @@ GeolocCommon.HistoryModal = {
     },
 
     /**
-     * Format date for HTML input[type="date"]
-     * Converts Date object to YYYY-MM-DD format
+     * Format date for HTML datetime input
+     * Converts Date object to YYYY-MM-DD HH:MM format for flatpickr
      * @param {Date} date - Date to format
-     * @returns {string} Formatted date string
+     * @returns {string} Formatted datetime string
      */
-    formatDateForInput: function(date) {
-        return date.toISOString().split('T')[0];
+    formatDateTimeForInput: function(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    },
+
+    /**
+     * Format date for AJAX requests
+     * Converts Date object to local datetime format for PHP DateTime parsing
+     * Uses local timezone to match stored history data
+     * @param {Date} date - Date to format
+     * @returns {string} Local datetime string (YYYY-MM-DD HH:MM:SS)
+     */
+    formatDateTimeForAjax: function(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    },
+
+    /**
+     * Initialize flatpickr datetime picker on an input element
+     * @param {string} inputId - ID of the input element
+     * @param {Date} defaultDate - Default date to set
+     * @returns {Object|null} Flatpickr instance or null if input not found
+     */
+    initDateTimePicker: function(inputId, defaultDate) {
+        const input = document.getElementById(inputId);
+        if (!input) return null;
+
+        const lang = typeof jeeFrontEnd !== 'undefined' ? jeeFrontEnd.language.substring(0, 2) : 'fr';
+        if (lang === 'fr' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.fr) {
+            flatpickr.localize(flatpickr.l10ns.fr);
+        }
+
+        return flatpickr(input, {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            defaultDate: defaultDate
+        });
     },
 
     /**
@@ -988,6 +1052,14 @@ GeolocCommon.MultiVehicleHistoryModal = {
 
         // Cleanup on hide
         $(`#${modalId}`).on('hidden.bs.modal', function() {
+            // Clean up flatpickr instances
+            const modal = GeolocCommon.MultiVehicleHistoryModal;
+            if (modal._pickers) {
+                if (modal._pickers.startPicker) modal._pickers.startPicker.destroy();
+                if (modal._pickers.endPicker) modal._pickers.endPicker.destroy();
+                delete modal._pickers;
+            }
+            // Clean up map instance
             if (window.geolocMultiHistoryMap) {
                 window.geolocMultiHistoryMap.remove();
                 delete window.geolocMultiHistoryMap;
@@ -1020,13 +1092,13 @@ GeolocCommon.MultiVehicleHistoryModal = {
                                 <div class="row" style="margin-bottom: 15px;">
                                     <div class="col-md-3">
                                         <label>Date de debut:</label>
-                                        <input type="date" id="multiHistoryStartDate" class="form-control input-sm"
-                                               value="${this.formatDateForInput(startDate)}">
+                                        <input type="text" id="multiHistoryStartDate" class="form-control input-sm in_datetimepicker"
+                                               placeholder="AAAA-MM-JJ HH:MM">
                                     </div>
                                     <div class="col-md-3">
                                         <label>Date de fin:</label>
-                                        <input type="date" id="multiHistoryEndDate" class="form-control input-sm"
-                                               value="${this.formatDateForInput(endDate)}">
+                                        <input type="text" id="multiHistoryEndDate" class="form-control input-sm in_datetimepicker"
+                                               placeholder="AAAA-MM-JJ HH:MM">
                                     </div>
                                     <div class="col-md-2" style="padding-top: 25px;">
                                         <button type="button" class="btn btn-primary btn-sm" id="multiHistoryRefresh">
@@ -1097,13 +1169,20 @@ GeolocCommon.MultiVehicleHistoryModal = {
             zoom: initialZoom
         });
 
+        // Initialize flatpickr datetime pickers
+        const startPicker = this.initDateTimePicker('multiHistoryStartDate', startDate);
+        const endPicker = this.initDateTimePicker('multiHistoryEndDate', endDate);
+
+        // Store pickers for cleanup
+        this._pickers = { startPicker, endPicker };
+
         // Load histories
         this.loadMultipleHistories(equipmentIds, startDate, endDate, mapId);
 
         // Bind refresh button
         $('#multiHistoryRefresh').on('click', () => {
-            const newStartDate = new Date($('#multiHistoryStartDate').val());
-            const newEndDate = new Date($('#multiHistoryEndDate').val());
+            const newStartDate = startPicker.selectedDates[0] || startDate;
+            const newEndDate = endPicker.selectedDates[0] || endDate;
 
             // Validate dates
             if (newEndDate < newStartDate) {
@@ -1116,12 +1195,28 @@ GeolocCommon.MultiVehicleHistoryModal = {
 
             this.loadMultipleHistories(this._currentEquipmentIds, newStartDate, newEndDate, mapId);
         });
+    },
 
-        // Make date inputs open picker on click (not just on icon)
-        $('#multiHistoryStartDate, #multiHistoryEndDate').on('click', function() {
-            if (typeof this.showPicker === 'function') {
-                this.showPicker();
-            }
+    /**
+     * Initialize flatpickr datetime picker on an input element
+     * @param {string} inputId - ID of the input element
+     * @param {Date} defaultDate - Default date to set
+     * @returns {Object|null} Flatpickr instance or null if input not found
+     */
+    initDateTimePicker: function(inputId, defaultDate) {
+        const input = document.getElementById(inputId);
+        if (!input) return null;
+
+        const lang = typeof jeeFrontEnd !== 'undefined' ? jeeFrontEnd.language.substring(0, 2) : 'fr';
+        if (lang === 'fr' && typeof flatpickr !== 'undefined' && flatpickr.l10ns && flatpickr.l10ns.fr) {
+            flatpickr.localize(flatpickr.l10ns.fr);
+        }
+
+        return flatpickr(input, {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            defaultDate: defaultDate
         });
     },
 
@@ -1140,12 +1235,13 @@ GeolocCommon.MultiVehicleHistoryModal = {
         $(`#${mapId} .loading-overlay`).css('display', 'flex');
 
         // Batch load all equipment histories
+        const formatDateTime = GeolocCommon.HistoryModal.formatDateTimeForAjax;
         const promises = equipmentIds.map(eqId =>
             GeolocCommon.AjaxHelper.request('getEquipmentById', {
                 eqLogicId: eqId,
                 getHistory: true,
-                startDate: startDate.toDateString(),
-                endDate: endDate.toDateString()
+                startDate: formatDateTime(startDate),
+                endDate: formatDateTime(endDate)
             })
         );
 
@@ -1155,7 +1251,7 @@ GeolocCommon.MultiVehicleHistoryModal = {
                     .filter(r => r.state === 'ok')
                     .map(r => r.result);
 
-                this.renderMultipleTrajectories(equipmentsWithHistory, mapId);
+                this.renderMultipleTrajectories(equipmentsWithHistory, mapId, startDate, endDate);
             })
             .catch(error => {
                 console.error('Error loading multi-vehicle history:', error);
@@ -1168,8 +1264,10 @@ GeolocCommon.MultiVehicleHistoryModal = {
      * Render trajectories for multiple equipments on the map
      * @param {Array} equipments - Array of equipment objects with coordinate history
      * @param {string} mapId - Map container DOM ID
+     * @param {Date} startDate - Start date filter for determining marker display
+     * @param {Date} endDate - End date filter for determining marker display
      */
-    renderMultipleTrajectories: function(equipments, mapId) {
+    renderMultipleTrajectories: function(equipments, mapId, startDate, endDate) {
         const map = window.geolocMultiHistoryMap;
         const legendContainer = $('#multiHistoryLegend');
 
@@ -1181,6 +1279,7 @@ GeolocCommon.MultiVehicleHistoryModal = {
         });
 
         const allCurrentPositions = []; // Current positions for map centering
+        const allCoordinatesForBounds = []; // All coordinates (current + history) for map bounds
         let legendHtml = '';
         let totalPoints = 0;
 
@@ -1209,11 +1308,6 @@ GeolocCommon.MultiVehicleHistoryModal = {
                 return; // Skip equipment with no history
             }
 
-            // Collect current position for map centering
-            if (equipment.latitude && equipment.longitude) {
-                allCurrentPositions.push([parseFloat(equipment.latitude), parseFloat(equipment.longitude)]);
-            }
-
             totalPoints += validHistory.length;
 
             // Extract coordinates
@@ -1223,19 +1317,61 @@ GeolocCommon.MultiVehicleHistoryModal = {
                 return [parseFloat(lat), parseFloat(lng)];
             });
 
-            // Add current position marker
-            if (equipment.latitude && equipment.longitude) {
+            // Add all history points to bounds calculation
+            allCoordinatesForBounds.push(...latLngs);
+
+            // Determine if current position should be shown based on coordinateDate vs endDate
+            let showCurrentPosition = false;
+            let lastHistoryMarkerAsMain = null;
+
+            if (equipment.latitude && equipment.longitude && equipment.coordinateDate) {
+                const coordinateDateTimestamp = new Date(equipment.coordinateDate).getTime();
+                const endDateTimestamp = endDate ? endDate.getTime() : Date.now();
+                showCurrentPosition = endDateTimestamp >= coordinateDateTimestamp;
+            }
+
+            if (showCurrentPosition && equipment.latitude && equipment.longitude) {
+                // Display "Position actuelle" marker
                 const currentLatLng = [parseFloat(equipment.latitude), parseFloat(equipment.longitude)];
                 const currentMarker = L.marker(currentLatLng, {
                     icon: GeolocCommon.MarkerFactory.createIcon(colorEntry.marker)
                 }).addTo(map);
 
+                const dateStr = equipment.coordinateDate
+                    ? new Date(equipment.coordinateDate).toLocaleString('fr-FR')
+                    : '';
                 currentMarker.bindPopup(`
                     <div class="geoloc-popup">
                         <h4>${equipment.name}</h4>
                         <p><strong>Position actuelle</strong></p>
+                        ${dateStr ? `<p><strong>Date:</strong> ${dateStr}</p>` : ''}
                     </div>
                 `);
+                allCurrentPositions.push(currentLatLng);
+                allCoordinatesForBounds.push(currentLatLng);
+            } else if (validHistory.length > 0) {
+                // Display last history point as main marker ("Derniere position connue")
+                const lastHistory = validHistory[validHistory.length - 1];
+                const lastLat = lastHistory.coordinate ? lastHistory.coordinate.latitude : lastHistory.latitude;
+                const lastLng = lastHistory.coordinate ? lastHistory.coordinate.longitude : lastHistory.longitude;
+                const lastLatLng = [parseFloat(lastLat), parseFloat(lastLng)];
+                const dateStr = new Date(lastHistory.date).toLocaleString('fr-FR');
+
+                const lastMarker = L.marker(lastLatLng, {
+                    icon: GeolocCommon.MarkerFactory.createIcon(colorEntry.marker)
+                }).addTo(map);
+
+                lastMarker.bindPopup(`
+                    <div class="geoloc-popup">
+                        <h4>${equipment.name}</h4>
+                        <p><strong>Derniere position connue</strong></p>
+                        <p><strong>Date:</strong> ${dateStr}</p>
+                    </div>
+                `);
+                allCurrentPositions.push(lastLatLng);
+
+                // Mark this index to skip in circleMarker loop
+                lastHistoryMarkerAsMain = validHistory.length - 1;
             }
 
             // Draw trajectory
@@ -1271,6 +1407,11 @@ GeolocCommon.MultiVehicleHistoryModal = {
 
             // Add history point markers
             latLngs.forEach((latLng, pointIndex) => {
+                // Skip if this point is already displayed as main marker
+                if (lastHistoryMarkerAsMain !== null && pointIndex === lastHistoryMarkerAsMain) {
+                    return;
+                }
+
                 const historyEntry = validHistory[pointIndex];
                 const date = new Date(historyEntry.date).toLocaleString('fr-FR');
 
@@ -1301,11 +1442,11 @@ GeolocCommon.MultiVehicleHistoryModal = {
         $(`#${mapId} .loading-overlay`).hide();
 
         // Store positions for re-centering after modal is fully shown
-        this._lastPositionsForCentering = allCurrentPositions;
+        this._lastPositionsForCentering = allCoordinatesForBounds;
 
-        // Fit map to show all current positions
-        if (allCurrentPositions.length > 0) {
-            GeolocCommon.HistoryModal.fitMapToCoordinates(map, allCurrentPositions);
+        // Fit map to show all coordinates (current positions + history points)
+        if (allCoordinatesForBounds.length > 0) {
+            GeolocCommon.HistoryModal.fitMapToCoordinates(map, allCoordinatesForBounds);
         }
 
         // Show message if no history data
@@ -1318,12 +1459,4 @@ GeolocCommon.MultiVehicleHistoryModal = {
         }
     },
 
-    /**
-     * Format date for HTML input[type="date"]
-     * @param {Date} date - Date to format
-     * @returns {string} Formatted date string (YYYY-MM-DD)
-     */
-    formatDateForInput: function(date) {
-        return date.toISOString().split('T')[0];
-    }
 };
