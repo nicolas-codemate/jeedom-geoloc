@@ -479,6 +479,10 @@ function updateMarkerVisibility(widget, equipmentId, isVisible) {
         if (isVisible) {
             if (!widget.map.hasLayer(marker)) {
                 marker.addTo(widget.map);
+                // Re-open popup when marker is shown again
+                setTimeout(() => {
+                    marker.openPopup();
+                }, 100);
             }
         } else {
             if (widget.map.hasLayer(marker)) {

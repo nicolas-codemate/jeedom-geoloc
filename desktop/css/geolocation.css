@@ -181,6 +181,10 @@
     color: #ecf0f1;
 }
 
+[data-theme*="Dark"] .geoloc-widget-popup .leaflet-popup-tip {
+    background: #34495e;
+}
+
 [data-theme*="Dark"] .geoloc-widget-popup .geoloc-popup h4 {
     color: #ecf0f1;
     border-bottom-color: #2c3e50;

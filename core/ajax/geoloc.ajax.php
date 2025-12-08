@@ -171,7 +171,6 @@ class GeolocAjaxHandler
 
         if ($endDate) {
             $endDate = new DateTime($endDate);
-            $endDate->add(new DateInterval('P1D'));
         }
 
         $eqLogic = $this->getEquipmentById($eqLogicId);
